@@ -1,0 +1,35 @@
+
+
+
+# SPEED CHARTS
+- MPS: M4 Max
+    - batch_size: 64
+    - num_workers: 8
+    - persistant_workers: true
+    - prefetch_factor: 2
+    - amp: true
+    - Time: 272.5634 seconds
+- GPU: L40
+    - batch_size: 64
+    - num_workers: 8
+    - persistant_workers: true
+    - prefetch_factor: 2
+    - amp: true
+    - pin_memory: True
+    - Time: 204.4073 seconds
+- GPU: L40
+    - batch_size: 64
+    - num_workers: 16
+    - persistant_workers: true
+    - prefetch_factor: 4
+    - amp: true
+    - pin_memory: True
+    - Time: 226.3902 seconds
+- GPU: L40
+    - batch_size: 64
+    - num_workers: 4
+    - persistant_workers: true
+    - prefetch_factor: 0
+    - amp: true
+    - pin_memory: True
+

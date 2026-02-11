@@ -1,8 +1,15 @@
 #!/bin/bash
 
 echo "Setting up environment"
-command -v uv &> /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
-[ -d ".venv" ] || uv venv
+
+if [[ "$(uname)" == "Linux"]]; then
+    command -v ffmpeg &> /dev/null || { apt update && apt install -y ffmpeg; }
+
+
+if ! command -v uv &> /dev/null; then
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
+fi
 uv sync
 source .venv/bin/activate
 

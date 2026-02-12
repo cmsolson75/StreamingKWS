@@ -2,9 +2,9 @@
 
 echo "Setting up environment"
 
-if [[ "$(uname)" == "Linux"]]; then
+if [[ "$(uname)" == "Linux" ]]; then
     command -v ffmpeg &> /dev/null || { apt update && apt install -y ffmpeg; }
-
+fi
 
 if ! command -v uv &> /dev/null; then
     curl -LsSf https://astral.sh/uv/install.sh | sh

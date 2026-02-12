@@ -83,24 +83,3 @@ def evaluate(model: nn.Module, cfg: Config, loader, db_mel_spec: DbMelSpec):
 def accuracy(logits: torch.Tensor, ys: torch.Tensor):
     return (logits.argmax(dim=1) == ys).float().mean().item()
 
-
-# if __name__ == "__main__":
-    # cfg_path = "configs/config.yaml"
-    # cfg = Config.from_yaml(cfg_path)
-    # train_loader = load_dataloader(cfg_path, "train")
-    # val_loader = load_dataloader(cfg_path, "val")
-    # model = AudioClassifier(35).to(cfg.device)
-    # scaler = torch.amp.GradScaler(cfg.device, enabled=cfg.amp)
-
-    # optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
-    # a = time.perf_counter()
-    # train(model, optim, scaler, cfg, train_loader, val_loader, 2000, 200, db_mel_spec=)
-    # b = time.perf_counter()
-    # print(b - a)
-
-    # test_loader = load_dataloader(cfg_path, "test")
-    # print(evaluate(model, cfg, test_loader))
-
-
-# RUN 1: tag=no_amp: TIME IN SECONDS: 323.19173625000985
-# RUN 2: tag=amp:

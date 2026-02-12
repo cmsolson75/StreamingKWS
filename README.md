@@ -25,11 +25,12 @@
     - amp: true
     - pin_memory: True
     - Time: 226.3902 seconds
-- GPU: L40
+- GPU: H100 PCI
     - batch_size: 64
-    - num_workers: 4
+    - num_workers: 8
     - persistant_workers: true
-    - prefetch_factor: 0
+    - prefetch_factor: 2
     - amp: true
     - pin_memory: True
+    - Time: 294.9295 seconds
 

@@ -1,7 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
 from .configs import Config
-from .transforms import AudioTransform
 from .dataset import SpeechCommands
 
 
@@ -14,7 +13,7 @@ def load_dataloader(cfg: Config, split: str):
             shuffle=True,
             num_workers=cfg.num_workers,
             pin_memory=cfg.pin_memory,
-            persistent_workers=cfg.persistant_workers,
+            persistent_workers=cfg.persistent_workers,
             drop_last=True,
         )
     else:
@@ -31,15 +30,15 @@ def infinite_dataloader(loader: DataLoader):
 if __name__ == "__main__":
     import time
 
-    loader = load_dataloader("configs/config.yaml", "train")
-    it = iter(infinite_dataloader(loader))
-    for _ in range(10):
-        next(it)
-    num_steps = 500
-    start = time.perf_counter()
-    for step in range(1, num_steps + 1):
-        x, y = next(it)
+    # loader = load_dataloader("configs/config.yaml", "train")
+    # it = iter(infinite_dataloader(loader))
+    # for _ in range(10):
+    #     next(it)
+    # num_steps = 500
+    # start = time.perf_counter()
+    # for step in range(1, num_steps + 1):
+    #     x, y = next(it)
 
-    end = time.perf_counter()
-    t = (end - start) / num_steps
-    print(1 / t)
+    # end = time.perf_counter()
+    # t = (end - start) / num_steps
+    # print(1 / t)

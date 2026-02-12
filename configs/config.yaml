@@ -46,11 +46,13 @@ n_mels: 64
 learning_rate: 0.003
 batch_size: 64
 num_workers: 8
-persistant_workers: true
+persistent_workers: true
 prefetch_factor: 2
 pin_memory: false
-device: "mps"
+device: "auto"
 max_steps: 10000
 amp: true
 log_period: 200
 eval_period: 2000
+
+seed: 42

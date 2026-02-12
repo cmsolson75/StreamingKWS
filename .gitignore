@@ -11,3 +11,8 @@ wheels/
 SpeechCommands
 speech_commands_v0.02.tar.gz
 data/
+
+config.resolved.json
+provenance.json
+overwrites.txt
+runs/

@@ -9,6 +9,7 @@ from .transforms import DbMelSpec
 from typing import Tuple
 from .checkpoint_manager import CheckpointManager
 
+
 def training_step(
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
@@ -45,12 +46,13 @@ def train(
     eval_period: int,
     log_period: int,
     db_mel_spec: DbMelSpec,
-    checkpoint_manager: CheckpointManager
+    checkpoint_manager: CheckpointManager,
+    start_step: int,
 ):
     model.train()
 
     it = iter(infinite_dataloader(train_loader))
-    for step in range(1, cfg.max_steps + 1):
+    for step in range(start_step, cfg.max_steps + 1):
         train_loss = training_step(model, optimizer, scaler, it, cfg, db_mel_spec)
 
         if step % log_period == 0 or step == 1:

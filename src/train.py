@@ -15,6 +15,7 @@ import platform
 import getpass
 
 
+
 def get_provenance(cfg: Config) -> dict:
     prov = {
         "git_sha": subprocess.run(
@@ -28,6 +29,7 @@ def get_provenance(cfg: Config) -> dict:
         "machine": platform.machine(),
         "user": getpass.getuser(),
         "hostname": platform.node(),
+        "seed": cfg.seed
     }
 
     prov["accelerator"] = (
@@ -51,6 +53,7 @@ def launch():
         nargs="+",
         metavar="TAG",
         help="List of tags (space-separated). E.g, --tags tag1 tag2 tag3",
+        default="",
     )
 
     args, overwrites = parser.parse_known_args()
@@ -59,7 +62,9 @@ def launch():
     else:
         cfg = Config.from_yaml(args.config).with_overrides(overwrites)
 
-    run_manager = RunManager("runs", cfg, tags=args.tags, cloud_sync=None)
+    run_manager = RunManager(
+        "runs", cfg, tags=args.tags, resume=cfg.resume
+    )
     ckpt = CheckpointManager(run_manager)
 
     with open(run_manager.path / "provenance.json", "w") as f:
@@ -79,6 +84,11 @@ def launch():
     scaler = torch.amp.GradScaler(cfg.device, enabled=cfg.amp)
 
     optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
+
+    start_step = ckpt.load(model, scaler=scaler, optimizer=optim)
+    if start_step > 0:
+        print(f"Resumed from step {start_step}")
+    
     start = time.perf_counter()
     train(
         model,
@@ -91,6 +101,7 @@ def launch():
         cfg.log_period,
         db_mel_spec,
         checkpoint_manager=ckpt,
+        start_step=start_step,
     )
     stop = time.perf_counter()
     print(f"Time: {stop - start:.4f} seconds")

@@ -6,13 +6,8 @@ import torch.nn.functional as F
 from .configs import Config
 from datetime import datetime, timezone
 import threading
-from abc import ABC, abstractmethod
 import json
-
-
-class CloudSync(ABC):
-    @abstractmethod
-    def push(self, local_path: Path, remote_name: str) -> None: ...
+import subprocess
 
 
 class RunManager:
@@ -21,7 +16,6 @@ class RunManager:
         base_path: str,
         cfg: Config,
         tags: list,
-        cloud_sync: CloudSync | None = None,
         resume: str | None = None,
     ):
         if resume:
@@ -35,27 +29,40 @@ class RunManager:
             self.path = Path(base_path) / f"{self.run_id}{slug}"
             self.path.mkdir(parents=True, exist_ok=True)
             cfg.to_json(self.path / "config.resolved.json")
-        self.cloud_sync = cloud_sync
+        self.s3_bucket = cfg.remote_name if cfg.cloud_sync else None
 
-        if self.cloud_sync:
+        if self.s3_bucket:
             self._sync_pending = threading.Event()
             self._sync_thread = threading.Thread(target=self._sync_worker, daemon=True)
-            self._sync_thread.start
+            self._sync_thread.start()
 
     def _sync_worker(self):
         while True:
             self._sync_pending.wait()
             self._sync_pending.clear()
-            self.cloud_sync.push(self.path, self.path.name)
+            try:
+                subprocess.run(
+                    [
+                        "aws",
+                        "s3",
+                        "sync",
+                        str(self.path),
+                        f"s3://{self.s3_bucket}/{self.path.name}",
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
+                print(f"Synced to s3://{self.s3_bucket}/{self.path.name}")
+            except Exception as e:
+                print(f"S3 sync failed: {e}")
 
     def sync(self) -> None:
-        if not self.cloud_sync:
+        if not self.s3_bucket:
             return
         self._sync_pending.set()
 
 
 class CheckpointManager:
-
     def __init__(self, run_manager: RunManager):
         self.run_manager = run_manager
         self.ckpt_dir = self.run_manager.path / "checkpoints"
@@ -82,7 +89,7 @@ class CheckpointManager:
             "created_at": datetime.now(timezone.utc).isoformat(),
             "files": [
                 {"path": "model.safetensors", "bytes": model_path.stat().st_size},
-                {"path": "train_stats.pt", "bytes": state_path.stat().st_size},
+                {"path": "train_state.pt", "bytes": state_path.stat().st_size},
             ],
         }
         (step_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
@@ -95,6 +102,21 @@ class CheckpointManager:
             return None
         latest = json.loads(latest_file.read_text())
         return self.ckpt_dir / latest["path"], latest["step"]
+
+    def load(self, model: nn.Module, **train_state):
+        result = self.load_latest()
+        if result is None:
+            return 0
+        step_dir, step = result
+        state_dict = load_file(step_dir / "model.safetensors")
+        model.load_state_dict(state_dict)
+
+        saved_state = torch.load(step_dir / "train_state.pt", weights_only=False)
+        for name, obj in train_state.items():
+            if name in saved_state:
+                obj.load_state_dict(saved_state[name])
+
+        return step
 
 
 if __name__ == "__main__":

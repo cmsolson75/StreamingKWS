@@ -31,6 +31,9 @@ class Config(BaseModel, frozen=True):
 
     # env
     seed: PositiveInt = 42
+    resume: str | None = None
+    remote_name: str | None = None
+    cloud_sync: bool = False
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Self:

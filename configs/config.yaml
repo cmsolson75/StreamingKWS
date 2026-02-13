@@ -56,5 +56,7 @@ log_period: 200
 eval_period: 2000
 
 seed: 42
+base_path: "runs"
 resume: null # set to str if you are resuming
-remote_name: null # set str if you are using cloud sync 
+remote_name: "training-s3-bucket-runpod/test" # set str if you are using cloud sync 
+cloud_sync: true

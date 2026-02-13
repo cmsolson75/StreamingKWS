@@ -4,6 +4,8 @@ from pathlib import Path
 from pydantic import BaseModel, PositiveInt, PositiveFloat, model_validator
 import torch
 import json
+import hashlib
+
 
 class Config(BaseModel, frozen=True):
     path: str
@@ -44,14 +46,18 @@ class Config(BaseModel, frozen=True):
             raw = json.loads(f)
         return cls.model_validate(raw)
 
+    def hash(self, length: int = 10) -> str:
+        canonical = json.dumps(self.model_dump(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode()).hexdigest()[:length]
+
     def to_json(self, path: Path) -> None:
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump(self.model_dump(), f, indent=2)
 
     def with_overrides(self, overrides: list[str]) -> Self:
         if not overrides:
             return self
-        
+
         updates = self.model_dump()
 
         for ov in overrides:
@@ -64,11 +70,17 @@ class Config(BaseModel, frozen=True):
                 d = d[part]
             d[parts[-1]] = val
         return self.model_validate(updates)
-    
+
     @model_validator(mode="after")
     def resolve_auto_device(self) -> Self:
         if self.device == "auto":
-            device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+            device = (
+                "cuda"
+                if torch.cuda.is_available()
+                else "mps"
+                if torch.backends.mps.is_available()
+                else "cpu"
+            )
             update_dict = {
                 "device": device,
             }
@@ -78,12 +90,11 @@ class Config(BaseModel, frozen=True):
 
             return self.model_copy(update={"device": device})
         return self
-            
-
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c", default="configs/config.yaml")
     args, overwrites = parser.parse_known_args()

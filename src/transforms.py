@@ -15,22 +15,22 @@ class DbMelSpec(nn.Module):
         fb = AF.melscale_fbanks(
             n_freqs=cfg.n_fft // 2 + 1,
             f_min=0.0,
-            f_max=cfg.sample_rate/2,
+            f_max=cfg.sample_rate / 2,
             n_mels=cfg.n_mels,
             sample_rate=cfg.sample_rate,
             norm=None,
-            mel_scale='htk'
+            mel_scale="htk",
         )
-        self.register_buffer('fb', fb, persistent=False)
+        self.register_buffer("fb", fb, persistent=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.ndim == 1:
             x = x.unsqueeze(0)
         if x.ndim == 3:
-            x = x.squeeze(1)    
-        
+            x = x.squeeze(1)
+
         x = x.contiguous()
-        
+
         X = torch.stft(
             x,
             n_fft=self.cfg.n_fft,
@@ -38,16 +38,15 @@ class DbMelSpec(nn.Module):
             win_length=self.cfg.n_fft,
             window=self.window,
             center=True,
-            return_complex=True)
-        
-        power = (X.abs() ** 2)
+            return_complex=True,
+        )
+
+        power = X.abs() ** 2
 
         mel = torch.matmul(self.fb.T, power)
-        db = AF.amplitude_to_DB(mel,
-                                multiplier=10,
-                                amin=1e-10,
-                                db_multiplier=0.0,
-                                top_db=80)
+        db = AF.amplitude_to_DB(
+            mel, multiplier=10, amin=1e-10, db_multiplier=0.0, top_db=80
+        )
         mean = db.mean(dim=(-2, -1), keepdim=True)
         std = db.std(dim=(-2, -1), keepdim=True).clamp_min(1e-5)
         return ((db - mean) / std).unsqueeze(1)

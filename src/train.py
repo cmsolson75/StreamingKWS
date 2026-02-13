@@ -1,85 +1,104 @@
 import torch
-from torch import nn
-import torch.nn.functional as F
-
-from .model import AudioClassifier
-from .dataloaders import load_dataloader, infinite_dataloader
+from .seed import seed_everything
+from .train_utils import train, evaluate
+from .dataloaders import load_dataloader
 from .configs import Config
-import time
-from collections.abc import Iterator
+from .model import AudioClassifier
 from .transforms import DbMelSpec
-from typing import Tuple
+import time
+import argparse
+import json
+from .checkpoint_manager import CheckpointManager, RunManager
+
+import subprocess
+import platform
+import getpass
 
 
-def training_step(
-    model: nn.Module,
-    optimizer: torch.optim.Optimizer,
-    scaler: torch.amp.GradScaler,
-    iter_loader: Iterator[Tuple[torch.Tensor, int]],
-    cfg: Config,
-    db_mel_spec: DbMelSpec
-):
-    model.train()
-    x, y = next(iter_loader)
-    x, y = x.to(cfg.device), y.to(cfg.device)
-    # Batched
-    x = db_mel_spec(x)
+def get_provenance(cfg: Config) -> dict:
+    prov = {
+        "git_sha": subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True
+        ).stdout.strip(),
+        "git_dirty": subprocess.run(
+            ["git", "status", "--porcelain"], capture_output=True, text=True
+        ).stdout
+        != "",
+        "system": platform.system(),
+        "machine": platform.machine(),
+        "user": getpass.getuser(),
+        "hostname": platform.node(),
+    }
 
-    with torch.autocast(device_type=cfg.device, enabled=cfg.amp):
-        logits = model(x)
-        loss = F.cross_entropy(logits, y)
+    prov["accelerator"] = (
+        torch.cuda.get_device_name(0)
+        if torch.cuda.is_available() and cfg.device == "cuda"
+        else "MPS"
+        if torch.backends.mps.is_available() and cfg.device == "mps"
+        else "CPU"
+    )
 
-    optimizer.zero_grad()
-
-    scaler.scale(loss).backward()
-    scaler.step(optimizer)
-    scaler.update()
-    return loss
-
-
-def train(
-    model: nn.Module,
-    optimizer: torch.optim.Optimizer,
-    scaler: torch.amp.GradScaler,
-    cfg: Config,
-    train_loader: torch.utils.data.DataLoader,
-    val_loader: torch.utils.data.DataLoader,
-    eval_period: int,
-    log_period: int,
-    db_mel_spec: DbMelSpec,
-):
-    model.train()
-
-    it = iter(infinite_dataloader(train_loader))
-    for step in range(1, cfg.max_steps + 1):
-        train_loss = training_step(model, optimizer, scaler, it, cfg, db_mel_spec)
-
-        if step % log_period == 0 or step == 1:
-            print(f"{step}/{cfg.max_steps}: train_loss={train_loss.item():.4f}")
-        if step % eval_period == 0 or step == 1:
-            val_loss, val_acc = evaluate(model, cfg, val_loader, db_mel_spec)
-            print(
-                f"{step}/{cfg.max_steps}: val_loss={val_loss:.4f} val_acc={val_acc:.4f}"
-            )
+    return prov
 
 
-@torch.no_grad()
-def evaluate(model: nn.Module, cfg: Config, loader, db_mel_spec: DbMelSpec):
-    model.eval()
-    total_loss, total_acc, n = 0, 0, 0
-    for x, y in loader:
-        x, y = x.to(cfg.device), y.to(cfg.device)
-        x = db_mel_spec(x)
-        logits = model(x)
-        loss = F.cross_entropy(logits, y)
-        acc = accuracy(logits, y)
-        bs = x.size(0)
-        total_loss += loss.item() * bs
-        total_acc += acc * bs
-        n += bs
-    return total_loss / n, total_acc / n
+def launch():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", "-c", default="configs/config.yaml")
+    parser.add_argument("--json_config", "-j", required=False)
+    parser.add_argument(
+        "--tags",
+        "-t",
+        nargs="+",
+        metavar="TAG",
+        help="List of tags (space-separated). E.g, --tags tag1 tag2 tag3",
+    )
+
+    args, overwrites = parser.parse_known_args()
+    if args.json_config is not None:
+        cfg = Config.from_json(args.json_config).with_overrides(overwrites)
+    else:
+        cfg = Config.from_yaml(args.config).with_overrides(overwrites)
+
+    run_manager = RunManager("runs", cfg, tags=args.tags, cloud_sync=None)
+    ckpt = CheckpointManager(run_manager)
+
+    with open(run_manager.path / "provenance.json", "w") as f:
+        json.dump(get_provenance(cfg), f, indent=2)
+    with open(run_manager.path / "overwrites.txt", "w") as f:
+        for overwrite in overwrites:
+            f.write(overwrite + "\n")
+    print(f"Config: {cfg.model_dump_json(indent=4)}")
+
+    seed_everything(cfg.seed)
+
+    train_loader = load_dataloader(cfg, "train")
+    val_loader = load_dataloader(cfg, "val")
+
+    db_mel_spec = DbMelSpec(cfg).to(cfg.device)
+    model = AudioClassifier(len(cfg.subset)).to(cfg.device)
+    scaler = torch.amp.GradScaler(cfg.device, enabled=cfg.amp)
+
+    optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
+    start = time.perf_counter()
+    train(
+        model,
+        optim,
+        scaler,
+        cfg,
+        train_loader,
+        val_loader,
+        cfg.eval_period,
+        cfg.log_period,
+        db_mel_spec,
+        checkpoint_manager=ckpt,
+    )
+    stop = time.perf_counter()
+    print(f"Time: {stop - start:.4f} seconds")
+    test_loader = load_dataloader(cfg, "test")
+    print(evaluate(model, cfg, test_loader, db_mel_spec))
 
 
-def accuracy(logits: torch.Tensor, ys: torch.Tensor):
-    return (logits.argmax(dim=1) == ys).float().mean().item()
+if __name__ == "__main__":
+    launch()
 
+# Speed: 281 seconds for 10k steps with default settings: LETS UP BATCH

@@ -56,3 +56,5 @@ log_period: 200
 eval_period: 2000
 
 seed: 42
+resume: null # set to str if you are resuming
+remote_name: null # set str if you are using cloud sync 

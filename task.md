@@ -143,6 +143,7 @@ run dir setup - Could make this into a libray
     - slug: ds=<ds_hash>__base=<base_id>__tag=<tag1+tag2>
         - most systems, the slug is just the tags, nothing else, don't overengineer.
         - Store experiment stuff in the tag.
+        - Better: run_id+tag1+tag2+etc
 - console.log
 - overrides.txt: what was applied
 - config.resolved.json
@@ -234,3 +235,11 @@ What I learned from GPU
 Helpful function
 - training_step 
 - Make sure you batch everything that can be batched.
+
+
+I do need to setup by hand LR decay with warmup
+
+CREATE TRAINING SCRIPT
+- Goal: Spot instance, VM goes down fully be able to resume training
+Update active_run.txt with current run_id
+- Checkpoint manager should sync to the cloud not a bash script

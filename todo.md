@@ -1,5 +1,4 @@
 Sync with S3
-- Test on VM
 - Training recovery: Mock loosing checkpoings / VM and resume training
 
 

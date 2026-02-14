@@ -15,7 +15,6 @@ import platform
 import getpass
 
 
-
 def get_provenance(cfg: Config) -> dict:
     prov = {
         "git_sha": subprocess.run(
@@ -29,7 +28,7 @@ def get_provenance(cfg: Config) -> dict:
         "machine": platform.machine(),
         "user": getpass.getuser(),
         "hostname": platform.node(),
-        "seed": cfg.seed
+        "seed": cfg.seed,
     }
 
     prov["accelerator"] = (
@@ -62,9 +61,7 @@ def launch():
     else:
         cfg = Config.from_yaml(args.config).with_overrides(overwrites)
 
-    run_manager = RunManager(
-        "runs", cfg, tags=args.tags, resume=cfg.resume
-    )
+    run_manager = RunManager("runs", cfg, tags=args.tags, resume=cfg.resume)
     ckpt = CheckpointManager(run_manager)
 
     with open(run_manager.path / "provenance.json", "w") as f:
@@ -75,6 +72,9 @@ def launch():
     print(f"Config: {cfg.model_dump_json(indent=4)}")
 
     seed_everything(cfg.seed)
+    torch.set_float32_matmul_precision("high")
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
 
     train_loader = load_dataloader(cfg, "train")
     val_loader = load_dataloader(cfg, "val")
@@ -88,7 +88,7 @@ def launch():
     start_step = ckpt.load(model, scaler=scaler, optimizer=optim)
     if start_step > 0:
         print(f"Resumed from step {start_step}")
-    
+
     start = time.perf_counter()
     train(
         model,

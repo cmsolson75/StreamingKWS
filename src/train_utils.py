@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from .transforms import DbMelSpec
 from typing import Tuple
 from .checkpoint_manager import CheckpointManager
+from .metric_logger import JSONLMetricLogger
 
 
 def training_step(
@@ -48,6 +49,7 @@ def train(
     db_mel_spec: DbMelSpec,
     checkpoint_manager: CheckpointManager,
     start_step: int,
+    metric_logger: JSONLMetricLogger,
 ):
     model.train()
 
@@ -57,10 +59,16 @@ def train(
 
         if step % log_period == 0 or step == 1:
             print(f"{step}/{cfg.max_steps}: train_loss={train_loss.item():.4f}")
+            metric_logger.log(
+                {"split": "train", "loss": train_loss.item(), "step": step}
+            )
         if step % eval_period == 0 or step == 1:
             val_loss, val_acc = evaluate(model, cfg, val_loader, db_mel_spec)
             print(
                 f"{step}/{cfg.max_steps}: val_loss={val_loss:.4f} val_acc={val_acc:.4f}"
+            )
+            metric_logger.log(
+                {"split": "val", "loss": val_loss, "accuracy": val_acc, "step": step}
             )
             checkpoint_manager.save(model, step, optimizer=optimizer, scaler=scaler)
 

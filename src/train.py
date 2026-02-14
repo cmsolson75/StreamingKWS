@@ -5,6 +5,7 @@ from .dataloaders import load_dataloader
 from .configs import Config
 from .model import AudioClassifier
 from .transforms import DbMelSpec
+from .metric_logger import JSONLMetricLogger
 import time
 import argparse
 import json
@@ -63,6 +64,7 @@ def launch():
 
     run_manager = RunManager("runs", cfg, tags=args.tags, resume=cfg.resume)
     ckpt = CheckpointManager(run_manager)
+    metrics_logger = JSONLMetricLogger(run_manager.path)
 
     with open(run_manager.path / "provenance.json", "w") as f:
         json.dump(get_provenance(cfg), f, indent=2)
@@ -102,6 +104,7 @@ def launch():
         db_mel_spec,
         checkpoint_manager=ckpt,
         start_step=start_step,
+        metric_logger=metrics_logger
     )
     stop = time.perf_counter()
     print(f"Time: {stop - start:.4f} seconds")

@@ -1,11 +1,12 @@
-Sync with S3
-- Training recovery: Mock loosing checkpoings / VM and resume training
 
 
 Separate out Eval System
 - best checkpoint
 - EMA, Scheduler
 - Have the eval take in the best checkpoint 
+
+
+
 
 
 Inference Testing

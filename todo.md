@@ -1,12 +1,7 @@
-
-
 Separate out Eval System
 - best checkpoint
 - EMA, Scheduler
 - Have the eval take in the best checkpoint 
-
-
-
 
 
 Inference Testing
@@ -29,11 +24,15 @@ Model
 Setup Augmentations
 Setup Sampler: Real, Unknown, Silence
 
-Setup
-- Torchscript
-
-
-Sweep Practice
+Sweep HPO
 - SET MAX BS
 - LR Finder
 - HPO - simple random sweep
+
+
+Setup
+- Torchscript
+
+Finalize 
+- Inference Engine
+

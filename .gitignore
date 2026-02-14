@@ -16,3 +16,4 @@ config.resolved.json
 provenance.json
 overwrites.txt
 runs/
+.ruff_cache

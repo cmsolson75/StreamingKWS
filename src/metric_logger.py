@@ -11,13 +11,3 @@ class JSONLMetricLogger:
             json_line = json.dumps(data)
             f.write(json_line + "\n")
 
-
-# if __name__ == "__main__":
-#     metrics_logger = JSONLMetricLogger(Path("."))
-
-#     data = {"loss": 10.2, "step": 200, "acc": 20}
-#     metrics_logger.log(data)
-
-
-#     data = {"loss": 9.2, "step": 300, "acc": 20}
-#     metrics_logger.log(data)

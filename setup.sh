@@ -17,6 +17,7 @@ if [[ "$(uname)" == "Linux" ]]; then
             sudo /tmp/aws/install
         fi
         rm -rf /tmp/aws /tmp/awscliv2.zip
+    fi
 fi
 
 if ! command -v uv &> /dev/null; then

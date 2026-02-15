@@ -16,23 +16,34 @@ Inference Testing
     - Streaming Inference Engine - see the edges you hit
 
 ---
+Setup Docker + ECR
+- Get working in RunPod
+
+Setup Augmentations
+Setup Sampler: Real, Unknown, Silence
+- TEST DIFFERENCE
 
 
 Model
 - Setup TC ResNet
 
-Setup Augmentations
-Setup Sampler: Real, Unknown, Silence
 
 Sweep HPO
-- SET MAX BS
+- SET MAX BS / What you set to for the sweep
 - LR Finder
-- HPO - simple random sweep
+- HPO - simple random sweep / log spaced grid
+- Test
+    - 10k steps
+    - 40k steps
+    - Compare the configs found
 
 
 Setup
 - Torchscript
+- Time differences
+- Hook into inference engine
 
-Finalize 
-- Inference Engine
+
+Look into
+- Receptive Field
 

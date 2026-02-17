@@ -105,7 +105,7 @@ def launch():
         checkpoint_manager=ckpt,
         start_step=start_step,
         metric_logger=metrics_logger,
-        best_acc=best_acc
+        best_acc=best_acc,
     )
     stop = time.perf_counter()
     print(f"Time: {stop - start:.4f} seconds")

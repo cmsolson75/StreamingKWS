@@ -1,5 +1,5 @@
 Separate out Eval System
-- best checkpoint
+- best checkpoint- Test
 - EMA, Scheduler
 - Have the eval take in the best checkpoint 
 

@@ -124,7 +124,7 @@ class CheckpointManager:
         for name, obj in train_state.items():
             if name in saved_state:
                 obj.load_state_dict(saved_state[name])
-        return step, saved_state['best_acc']
+        return step, saved_state["best_acc"]
 
 
 if __name__ == "__main__":

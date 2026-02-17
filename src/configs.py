@@ -46,7 +46,7 @@ class Config(BaseModel, frozen=True):
     def from_json(cls, path: str | Path) -> Self:
         cfg_path = Path(path)
         with cfg_path.open("r") as f:
-            raw = json.loads(f)
+            raw = json.load(f)
         return cls.model_validate(raw)
 
     def hash(self, length: int = 10) -> str:

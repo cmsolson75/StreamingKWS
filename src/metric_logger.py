@@ -10,4 +10,3 @@ class JSONLMetricLogger:
         with self.jsonl_path.open(mode="a", encoding="utf-8") as f:
             json_line = json.dumps(data)
             f.write(json_line + "\n")
-

@@ -33,9 +33,10 @@ Sweep HPO
 - LR Finder
 - HPO - simple random sweep / log spaced grid
 - Test
+    - 5k steps
     - 10k steps
     - 40k steps
-    - Compare the configs found
+    - Compare the configs found after fully trained
 
 
 Setup
@@ -46,4 +47,3 @@ Setup
 
 Look into
 - Receptive Field
-

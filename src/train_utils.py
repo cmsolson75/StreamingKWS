@@ -50,6 +50,7 @@ def train(
     checkpoint_manager: CheckpointManager,
     start_step: int,
     metric_logger: JSONLMetricLogger,
+    best_acc: float,
 ):
     model.train()
 
@@ -70,7 +71,18 @@ def train(
             metric_logger.log(
                 {"split": "val", "loss": val_loss, "accuracy": val_acc, "step": step}
             )
-            checkpoint_manager.save(model, step, optimizer=optimizer, scaler=scaler)
+            best = False
+            if best_acc < val_acc:
+                best = True
+                best_acc = val_acc
+            checkpoint_manager.save(
+                model,
+                step,
+                best=best,
+                best_acc=best_acc,
+                optimizer=optimizer,
+                scaler=scaler,
+            )
 
 
 @torch.no_grad()

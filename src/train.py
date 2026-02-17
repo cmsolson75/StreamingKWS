@@ -87,7 +87,7 @@ def launch():
 
     optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
 
-    start_step = ckpt.load(model, scaler=scaler, optimizer=optim)
+    start_step, best_acc = ckpt.load(model, scaler=scaler, optimizer=optim)
     if start_step > 0:
         print(f"Resumed from step {start_step}")
 
@@ -104,7 +104,8 @@ def launch():
         db_mel_spec,
         checkpoint_manager=ckpt,
         start_step=start_step,
-        metric_logger=metrics_logger
+        metric_logger=metrics_logger,
+        best_acc=best_acc
     )
     stop = time.perf_counter()
     print(f"Time: {stop - start:.4f} seconds")

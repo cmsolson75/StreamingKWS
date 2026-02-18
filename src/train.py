@@ -10,6 +10,7 @@ import time
 import argparse
 import json
 from .checkpoint_manager import CheckpointManager, RunManager
+from ema_pytorch import EMA
 
 import subprocess
 import platform
@@ -83,8 +84,15 @@ def launch():
 
     db_mel_spec = DbMelSpec(cfg).to(cfg.device)
     model = AudioClassifier(len(cfg.subset)).to(cfg.device)
+    ema_model = EMA(
+        model,
+        beta=0.999,
+        power=3/4,
+        update_every=1,
+        update_after_step=100,
+        include_online_model=False,
+    )
     scaler = torch.amp.GradScaler(cfg.device, enabled=cfg.amp)
-
     optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
 
     start_step, best_acc = ckpt.load(model, scaler=scaler, optimizer=optim)
@@ -94,6 +102,7 @@ def launch():
     start = time.perf_counter()
     train(
         model,
+        ema_model,
         optim,
         scaler,
         cfg,
@@ -108,7 +117,13 @@ def launch():
         best_acc=best_acc,
     )
     stop = time.perf_counter()
-    print(f"Time: {stop - start:.4f} seconds")
+    total_time = stop - start
+    avg_wall_seconds_per_step = total_time / cfg.max_steps
+    steps_per_second = cfg.max_steps / total_time
+    samples_per_second = steps_per_second * cfg.batch_size
+    print(f"Total wall Time: {total_time:.2f} seconds | "
+          f"Throughput: {samples_per_second:.2f} samples/s | "
+          f"Latency: {avg_wall_seconds_per_step:.4f} s/step")
     test_loader = load_dataloader(cfg, "test")
     print(evaluate(model, cfg, test_loader, db_mel_spec))
 

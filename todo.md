@@ -1,7 +1,5 @@
 Separate out Eval System
-- best checkpoint- Test
-- EMA, Scheduler
-- Have the eval take in the best checkpoint 
+- Scheduler
 
 
 Inference Testing
@@ -14,6 +12,8 @@ Inference Testing
 - INSPECT: Probabilities and see what is going on.
 - SETUP:
     - Streaming Inference Engine - see the edges you hit
+
+---
 
 ---
 Setup Docker + ECR

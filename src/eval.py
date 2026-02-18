@@ -1,5 +1,5 @@
 import torch
-import torch
+from torch import nn
 from .seed import seed_everything
 from .transforms import DbMelSpec
 
@@ -13,18 +13,21 @@ import json
 from safetensors.torch import load_file
 
 
-if __name__ == "__main__":
+
+def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model_folder",
+        "--model",
         "-m",
-        default="configs/config.yaml",
+        type=str,
         help="path to model folder or json pointer",
     )
     parser.add_argument("--device", "-d", type=str)
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    path = Path(args.model_folder)
+
+def load_cfg_model_state(model_path: str, device: str):
+    path = Path(model_path)
     if path.suffix == ".json":
         json_data = json.loads(path.read_text())["path"]
         path = path.parent / json_data
@@ -32,11 +35,20 @@ if __name__ == "__main__":
 
     state_dict = load_file(path / "model.safetensors")
     json_config = base_path / "config.resolved.json"
-    cfg = Config.from_json(str(json_config))
-    db_mel_spec = DbMelSpec(cfg).to(cfg.device)
+    return Config.from_json(str(json_config)).with_overrides([f"device={device}"]), state_dict
 
+
+def load_model(cfg: Config) -> nn.Module:
+    db_mel_spec = DbMelSpec(cfg).to(cfg.device)
     model = AudioClassifier(len(cfg.subset)).to(cfg.device)
     model.load_state_dict(state_dict)
+    model.eval()
+    return model, db_mel_spec
+
+if __name__ == "__main__":
+    args = get_args()
+    cfg, state_dict = load_cfg_model_state(args.model, args.device)
+    model, db_mel_spec = load_model(cfg)
 
     seed_everything(cfg.seed)
     torch.set_float32_matmul_precision("high")
@@ -44,4 +56,5 @@ if __name__ == "__main__":
     torch.backends.cudnn.allow_tf32 = True
 
     test_loader = load_dataloader(cfg, "test")
-    print(evaluate(model, cfg, test_loader, db_mel_spec))
+    loss, acc = evaluate(model, cfg, test_loader, db_mel_spec)
+    print(f"Loss: {loss:.4f}, Accuracy: {acc:.4f}")

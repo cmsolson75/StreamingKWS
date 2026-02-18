@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from ema_pytorch import EMA
 
 from .dataloaders import infinite_dataloader
 from .configs import Config
@@ -13,6 +14,7 @@ from .metric_logger import JSONLMetricLogger
 
 def training_step(
     model: nn.Module,
+    ema_model: EMA,
     optimizer: torch.optim.Optimizer,
     scaler: torch.amp.GradScaler,
     iter_loader: Iterator[Tuple[torch.Tensor, int]],
@@ -33,12 +35,14 @@ def training_step(
 
     scaler.scale(loss).backward()
     scaler.step(optimizer)
+    ema_model.update()
     scaler.update()
     return loss
 
 
 def train(
     model: nn.Module,
+    ema_model: EMA,
     optimizer: torch.optim.Optimizer,
     scaler: torch.amp.GradScaler,
     cfg: Config,
@@ -56,7 +60,7 @@ def train(
 
     it = iter(infinite_dataloader(train_loader))
     for step in range(start_step, cfg.max_steps + 1):
-        train_loss = training_step(model, optimizer, scaler, it, cfg, db_mel_spec)
+        train_loss = training_step(model, ema_model, optimizer, scaler, it, cfg, db_mel_spec)
 
         if step % log_period == 0 or step == 1:
             print(f"{step}/{cfg.max_steps}: train_loss={train_loss.item():.4f}")
@@ -64,7 +68,7 @@ def train(
                 {"split": "train", "loss": train_loss.item(), "step": step}
             )
         if step % eval_period == 0 or step == 1:
-            val_loss, val_acc = evaluate(model, cfg, val_loader, db_mel_spec)
+            val_loss, val_acc = evaluate(ema_model.ema_model, cfg, val_loader, db_mel_spec)
             print(
                 f"{step}/{cfg.max_steps}: val_loss={val_loss:.4f} val_acc={val_acc:.4f}"
             )
@@ -76,7 +80,7 @@ def train(
                 best = True
                 best_acc = val_acc
             checkpoint_manager.save(
-                model,
+                ema_model.ema_model,
                 step,
                 best=best,
                 best_acc=best_acc,

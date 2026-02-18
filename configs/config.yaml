@@ -60,3 +60,5 @@ base_path: "runs"
 resume: null # set to str if you are resuming
 remote_name: "training-s3-bucket-runpod/test"
 cloud_sync: false
+
+warmup_steps: 1000

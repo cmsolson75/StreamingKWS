@@ -17,6 +17,7 @@ def training_step(
     ema_model: EMA,
     optimizer: torch.optim.Optimizer,
     scaler: torch.amp.GradScaler,
+    scheduler: torch.optim.lr_scheduler.LRScheduler,
     iter_loader: Iterator[Tuple[torch.Tensor, int]],
     cfg: Config,
     db_mel_spec: DbMelSpec,
@@ -37,6 +38,7 @@ def training_step(
     scaler.step(optimizer)
     ema_model.update()
     scaler.update()
+    scheduler.step()
     return loss
 
 
@@ -45,6 +47,7 @@ def train(
     ema_model: EMA,
     optimizer: torch.optim.Optimizer,
     scaler: torch.amp.GradScaler,
+    scheduler: torch.optim.lr_scheduler.LRScheduler,
     cfg: Config,
     train_loader: torch.utils.data.DataLoader,
     val_loader: torch.utils.data.DataLoader,
@@ -61,7 +64,7 @@ def train(
     it = iter(infinite_dataloader(train_loader))
     for step in range(start_step, cfg.max_steps + 1):
         train_loss = training_step(
-            model, ema_model, optimizer, scaler, it, cfg, db_mel_spec
+            model, ema_model, optimizer, scaler, scheduler, it, cfg, db_mel_spec
         )
 
         if step % log_period == 0 or step == 1:

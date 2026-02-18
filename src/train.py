@@ -44,6 +44,27 @@ def get_provenance(cfg: Config) -> dict:
     return prov
 
 
+def get_scheduler(
+    optimizer: torch.optim.Optimizer, cfg: Config
+) -> torch.optim.lr_scheduler.LRScheduler:
+    warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer=optimizer,
+        lr_lambda=lambda step: min((step + 1) / cfg.warmup_steps, 1.0),
+    )
+
+    cosine_decay_steps = cfg.max_steps - cfg.warmup_steps
+    cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer=optimizer, T_max=cosine_decay_steps, eta_min=0.001
+    )
+
+    scheduler = torch.optim.lr_scheduler.SequentialLR(
+        optimizer=optimizer,
+        schedulers=[warmup_scheduler, cosine_scheduler],
+        milestones=[cfg.warmup_steps],
+    )
+    return scheduler
+
+
 def launch():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c", default="configs/config.yaml")
@@ -95,6 +116,8 @@ def launch():
     scaler = torch.amp.GradScaler(cfg.device, enabled=cfg.amp)
     optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
 
+    scheduler = get_scheduler(optim, cfg)
+
     start_step, best_acc = ckpt.load(model, scaler=scaler, optimizer=optim)
     if start_step > 0:
         print(f"Resumed from step {start_step}")
@@ -105,6 +128,7 @@ def launch():
         ema_model,
         optim,
         scaler,
+        scheduler,
         cfg,
         train_loader,
         val_loader,

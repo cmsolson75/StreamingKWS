@@ -25,7 +25,7 @@ def get_args():
     return parser.parse_args()
 
 
-def load_cfg_model_state(model_path: str, device: str):
+def load_cfg_model_state(model_path: str, device: str | None):
     path = Path(model_path)
     if path.suffix == ".json":
         json_data = json.loads(path.read_text())["path"]
@@ -34,8 +34,11 @@ def load_cfg_model_state(model_path: str, device: str):
 
     state_dict = load_file(path / "model.safetensors")
     json_config = base_path / "config.resolved.json"
+    device_overwrite = None
+    if device is not None:
+        device_overwrite = [f"device={device}"]
     return Config.from_json(str(json_config)).with_overrides(
-        [f"device={device}"]
+        device_overwrite
     ), state_dict
 
 

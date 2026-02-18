@@ -35,6 +35,8 @@ class Config(BaseModel, frozen=True):
     remote_name: str | None = None
     cloud_sync: bool = False
 
+    warmup_steps: int = 1000
+
     @classmethod
     def from_yaml(cls, path: str | Path) -> Self:
         cfg_path = Path(path)

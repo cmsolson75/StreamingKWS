@@ -2,6 +2,9 @@ Separate out Eval System
 - Scheduler
 - Check Speed on GPU vs MPS
 
+Properly abstract config with sub setup so its not completly flat
+- Could move to YAML only instead of JSON dump
+
 
 Inference Testing
 - Simple inference engine: manual clean up before running through the model.

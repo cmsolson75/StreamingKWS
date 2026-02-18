@@ -2,7 +2,6 @@ from pathlib import Path
 from safetensors.torch import save_file, load_file
 from torch import nn
 import torch
-import torch.nn.functional as F
 from .configs import Config
 from datetime import datetime, timezone
 import threading

@@ -1,4 +1,3 @@
-import torch
 import torchaudio
 from torch.utils.data import Dataset
 from .configs import Config

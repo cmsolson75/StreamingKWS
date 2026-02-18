@@ -1,4 +1,3 @@
-import torch
 from torch.utils.data import DataLoader
 from .configs import Config
 from .dataset import SpeechCommands

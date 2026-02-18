@@ -117,8 +117,6 @@ def launch():
         best_acc=best_acc,
     )
 
-
-    
     stop = time.perf_counter()
     total_time = stop - start
     avg_wall_seconds_per_step = total_time / cfg.max_steps

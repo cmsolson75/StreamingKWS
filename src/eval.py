@@ -13,7 +13,6 @@ import json
 from safetensors.torch import load_file
 
 
-
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -35,7 +34,9 @@ def load_cfg_model_state(model_path: str, device: str):
 
     state_dict = load_file(path / "model.safetensors")
     json_config = base_path / "config.resolved.json"
-    return Config.from_json(str(json_config)).with_overrides([f"device={device}"]), state_dict
+    return Config.from_json(str(json_config)).with_overrides(
+        [f"device={device}"]
+    ), state_dict
 
 
 def load_model(cfg: Config) -> nn.Module:
@@ -45,15 +46,17 @@ def load_model(cfg: Config) -> nn.Module:
     model.eval()
     return model, db_mel_spec
 
+
 if __name__ == "__main__":
+    torch.set_float32_matmul_precision("high")
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+
     args = get_args()
     cfg, state_dict = load_cfg_model_state(args.model, args.device)
     model, db_mel_spec = load_model(cfg)
 
     seed_everything(cfg.seed)
-    torch.set_float32_matmul_precision("high")
-    torch.backends.cuda.matmul.allow_tf32 = True
-    torch.backends.cudnn.allow_tf32 = True
 
     test_loader = load_dataloader(cfg, "test")
     loss, acc = evaluate(model, cfg, test_loader, db_mel_spec)

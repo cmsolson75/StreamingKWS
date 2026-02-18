@@ -60,7 +60,9 @@ def train(
 
     it = iter(infinite_dataloader(train_loader))
     for step in range(start_step, cfg.max_steps + 1):
-        train_loss = training_step(model, ema_model, optimizer, scaler, it, cfg, db_mel_spec)
+        train_loss = training_step(
+            model, ema_model, optimizer, scaler, it, cfg, db_mel_spec
+        )
 
         if step % log_period == 0 or step == 1:
             print(f"{step}/{cfg.max_steps}: train_loss={train_loss.item():.4f}")
@@ -68,7 +70,9 @@ def train(
                 {"split": "train", "loss": train_loss.item(), "step": step}
             )
         if step % eval_period == 0 or step == 1:
-            val_loss, val_acc = evaluate(ema_model.ema_model, cfg, val_loader, db_mel_spec)
+            val_loss, val_acc = evaluate(
+                ema_model.ema_model, cfg, val_loader, db_mel_spec
+            )
             print(
                 f"{step}/{cfg.max_steps}: val_loss={val_loss:.4f} val_acc={val_acc:.4f}"
             )

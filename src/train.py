@@ -87,7 +87,7 @@ def launch():
     ema_model = EMA(
         model,
         beta=0.999,
-        power=3/4,
+        power=3 / 4,
         update_every=1,
         update_after_step=100,
         include_online_model=False,
@@ -121,9 +121,11 @@ def launch():
     avg_wall_seconds_per_step = total_time / cfg.max_steps
     steps_per_second = cfg.max_steps / total_time
     samples_per_second = steps_per_second * cfg.batch_size
-    print(f"Total wall Time: {total_time:.2f} seconds | "
-          f"Throughput: {samples_per_second:.2f} samples/s | "
-          f"Latency: {avg_wall_seconds_per_step:.4f} s/step")
+    print(
+        f"Total wall Time: {total_time:.2f} seconds | "
+        f"Throughput: {samples_per_second:.2f} samples/s | "
+        f"Latency: {avg_wall_seconds_per_step:.4f} s/step"
+    )
     test_loader = load_dataloader(cfg, "test")
     print(evaluate(model, cfg, test_loader, db_mel_spec))
 

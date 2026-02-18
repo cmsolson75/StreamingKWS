@@ -1,5 +1,6 @@
 Separate out Eval System
 - Scheduler
+- Check Speed on GPU vs MPS
 
 
 Inference Testing

@@ -19,6 +19,8 @@ At scale, teams:
 	4.	Only push batch higher if required for scaling laws or parallelism efficiency
 
 
+
+
 Inference Testing
 - Simple inference engine: manual clean up before running through the model.
 - Test model on edge cases
@@ -29,6 +31,11 @@ Inference Testing
 - INSPECT: Probabilities and see what is going on.
 - SETUP:
     - Streaming Inference Engine - see the edges you hit
+
+
+For streaming inference engine
+- Need to essentially send chunks of data to model 
+    - Some form of VAD is helpful to make sure model works less, but model should be able to handle audio chunks
 
 ---
 

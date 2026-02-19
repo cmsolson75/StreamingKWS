@@ -97,6 +97,36 @@ class Config(BaseModel, frozen=True):
         return self
 
 
+class InferConfig(BaseModel, frozen=True):
+    model: str
+    label_file: str
+    device: str
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> Self:
+        cfg_path = Path(path)
+        with cfg_path.open("r") as f:
+            raw = yaml.safe_load(f)
+        return cls.model_validate(raw)
+
+    def with_overrides(self, overrides: list[str]) -> Self:
+        if not overrides:
+            return self
+
+        updates = self.model_dump()
+
+        for ov in overrides:
+            key, val = ov.split("=", 1)
+            val = yaml.safe_load(val)
+            parts = key.split(".")
+
+            d = updates
+            for part in parts[:-1]:
+                d = d[part]
+            d[parts[-1]] = val
+        return self.model_validate(updates)
+
+
 if __name__ == "__main__":
     import argparse
 

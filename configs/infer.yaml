@@ -1,0 +1,3 @@
+model: "runs/20260217T235214Z_8da390c380/checkpoints/best.json"
+label_file: "labels.json"
+device: "cpu"

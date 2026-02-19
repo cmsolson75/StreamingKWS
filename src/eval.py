@@ -42,7 +42,7 @@ def load_cfg_model_state(model_path: str, device: str | None):
     ), state_dict
 
 
-def load_model(cfg: Config) -> nn.Module:
+def load_model(cfg: Config, state_dict) -> nn.Module:
     db_mel_spec = DbMelSpec(cfg).to(cfg.device)
     model = AudioClassifier(len(cfg.subset)).to(cfg.device)
     model.load_state_dict(state_dict)
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     args = get_args()
     cfg, state_dict = load_cfg_model_state(args.model, args.device)
-    model, db_mel_spec = load_model(cfg)
+    model, db_mel_spec = load_model(cfg, state_dict)
 
     seed_everything(cfg.seed)
 

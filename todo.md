@@ -1,9 +1,22 @@
-Separate out Eval System
-- Scheduler
-- Check Speed on GPU vs MPS
 
-Properly abstract config with sub setup so its not completly flat
-- Could move to YAML only instead of JSON dump
+Check Speed on GPU vs MPS
+- MPS: Total wall Time: 915.47 seconds | Throughput: 2097.27 samples/s | Latency: 0.0305 s/step
+- ADA 6000: Total wall Time: 297.12 seconds | Throughput: 6462.04 samples/s | Latency: 0.0099 s/step
+
+
+TUNING
+Keep your instinct, but change the order:
+	1.	Increase batch until GPU utilization stabilizes
+	2.	Track samples/tokens per second
+	3.	Stop when throughput stops improving
+	4.	Tune LR / schedule / regularization around that batch
+	5.	Leave VRAM headroom
+
+At scale, teams:
+	1.	Find a batch size that saturates compute
+	2.	Measure tokens/sec
+	3.	Stop increasing batch once tokens/sec plateaus
+	4.	Only push batch higher if required for scaling laws or parallelism efficiency
 
 
 Inference Testing

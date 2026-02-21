@@ -33,8 +33,10 @@ Inference Testing
 
 For streaming inference engine
 - Need to essentially send chunks of data to model 
-    - Some form of VAD is helpful to make sure model works less, but model should be able to handle audio chunks
 
+Issues with buffer
+- Word is in buffer for 1 second any others are colided with tell its gone
+- Look at cooldowns 
 ---
 
 ---
@@ -45,6 +47,8 @@ Setup Augmentations
 Setup Sampler: Real, Unknown, Silence
 - TEST DIFFERENCE
 
+
+---
 
 Model
 - Setup TC ResNet

@@ -127,7 +127,7 @@ class AudioStream:
         self.buffer = CircularBuffer(self.buffer_size)
         self.inference_runner = inference_runner
         self.labels = labels
-        self.silence_threshold = 0.001
+        self.silence_threshold = 0.01
 
     def callback(self, indata, frames, time, status):
         if status:

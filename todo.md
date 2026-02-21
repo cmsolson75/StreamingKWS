@@ -29,8 +29,6 @@ Inference Testing
     - OOD words
     - Silence
 - INSPECT: Probabilities and see what is going on.
-- SETUP:
-    - Streaming Inference Engine - see the edges you hit
 
 
 For streaming inference engine
@@ -70,4 +68,18 @@ Setup
 
 
 Look into
-- Receptive Field
+- Receptive Field: How big is the receptive field of a model.
+
+
+What I am building
+- Phone number system with wake word
+    - Marvin
+- Need to have a wakeword
+- Need to have a state where model is listening for numbers
+    - Need to have a cut off it it hears no numbers
+- Then we can output a phone number 
+- StateMachine, CircularBuffer
+
+
+Additional Fun
+- Distilation

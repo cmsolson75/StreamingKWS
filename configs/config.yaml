@@ -39,7 +39,7 @@ subset:
 
 sample_rate: 16000
 clip_length: 1.0
-n_fft: 400
+n_fft: 400 # 25ms
 hop_len: 160
 n_mels: 64
 

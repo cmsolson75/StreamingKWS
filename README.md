@@ -1,6 +1,15 @@
 
 
 
+## TRAINING 
+1.	Increase batch until GPU utilization stabilizes
+2.	Track samples/tokens per second
+3.	Stop when throughput stops improving
+4.	Tune LR / schedule / regularization around that batch
+5.	Leave VRAM headroom
+
+
+
 # SPEED CHARTS
 - MPS: M4 Max
     - batch_size: 64

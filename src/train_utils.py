@@ -3,7 +3,6 @@ from torch import nn
 import torch.nn.functional as F
 from ema_pytorch import EMA
 
-from .dataloaders import infinite_dataloader
 from .configs import Config
 from collections.abc import Iterator
 from .transforms import DbMelSpec
@@ -61,7 +60,7 @@ def train(
 ):
     model.train()
 
-    it = iter(infinite_dataloader(train_loader))
+    it = iter(train_loader)
     for step in range(start_step, cfg.max_steps + 1):
         train_loss = training_step(
             model, ema_model, optimizer, scaler, scheduler, it, cfg, db_mel_spec
@@ -93,6 +92,7 @@ def train(
                 best_acc=best_acc,
                 optimizer=optimizer,
                 scaler=scaler,
+                sampler_step=step * cfg.batch_size,
             )
 
 

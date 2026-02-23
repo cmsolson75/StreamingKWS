@@ -100,9 +100,6 @@ def launch():
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
 
-    train_loader = load_dataloader(cfg, "train")
-    val_loader = load_dataloader(cfg, "val")
-
     db_mel_spec = DbMelSpec(cfg).to(cfg.device)
     model = AudioClassifier(len(cfg.subset)).to(cfg.device)
     ema_model = EMA(
@@ -118,9 +115,12 @@ def launch():
 
     scheduler = get_scheduler(optim, cfg)
 
-    start_step, best_acc = ckpt.load(model, scaler=scaler, optimizer=optim)
+    start_step, best_acc, state_dict = ckpt.load(model, scaler=scaler, optimizer=optim)
     if start_step > 0:
         print(f"Resumed from step {start_step}")
+
+    train_loader = load_dataloader(cfg, "train")
+    val_loader = load_dataloader(cfg, "val")
 
     start = time.perf_counter()
     train(

@@ -1,22 +1,33 @@
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 from .configs import Config
-from .dataset import SpeechCommands
+from .dataset import SpeechCommands, OOVDataset, SyntheticSilenceDataset
+from .weighted_sampler import WeightedSampler
 
 
-def load_dataloader(cfg: Config, split: str):
+def load_dataloader(cfg: Config, split: str, start_step: int | None = None):
+    sc = SpeechCommands(cfg, split)
+    unknown = OOVDataset(cfg, split)
+    silence = SyntheticSilenceDataset(cfg)
+
+    dataset = ConcatDataset([sc, unknown, silence])
     if split == "train":
-        dataset = SpeechCommands(cfg, split)
+        if start_step is None:
+            start_step = 0
+        sampler = WeightedSampler(
+            dataset,
+            weights=[cfg.keyword_weight, cfg.unknown_weight, cfg.silence_weight],
+            seed=cfg.seed,
+            start_step=start_step,
+        )
         loader = DataLoader(
             dataset,
             batch_size=cfg.batch_size,
-            shuffle=True,
+            sampler=sampler,
             num_workers=cfg.num_workers,
             pin_memory=cfg.pin_memory,
             persistent_workers=cfg.persistent_workers,
-            drop_last=True,
         )
     else:
-        dataset = SpeechCommands(cfg, split)
         loader = DataLoader(
             dataset, shuffle=False, batch_size=cfg.batch_size, drop_last=True
         )

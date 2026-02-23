@@ -30,6 +30,8 @@ Inference Testing
     - Silence
 - INSPECT: Probabilities and see what is going on.
 
+New version of loader is not working
+
 
 For streaming inference engine
 - Need to essentially send chunks of data to model 
@@ -46,6 +48,7 @@ Setup Docker + ECR
 Setup Augmentations
 Setup Sampler: Real, Unknown, Silence
 - TEST DIFFERENCE
+- Need to make sure you save the sampler step (step * bs) - this is for resume logic to work.
 
 
 ---

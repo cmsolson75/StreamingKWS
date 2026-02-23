@@ -37,6 +37,12 @@ class Config(BaseModel, frozen=True):
 
     warmup_steps: int = 1000
 
+    silence_pool_size: int = 1000  # number does not matter
+
+    keyword_weight: float = 0.7
+    unknown_weight: float = 0.2
+    silence_weight: float = 0.1
+
     @classmethod
     def from_yaml(cls, path: str | Path) -> Self:
         cfg_path = Path(path)

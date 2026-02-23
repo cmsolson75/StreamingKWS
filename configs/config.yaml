@@ -1,39 +1,15 @@
 path: data/SpeechCommands/speech_commands_v0.02
 subset:  
-  - "backward"
-  - "bed"
-  - "bird"
-  - "cat"
-  - "dog"
-  - "down"
   - "eight"
   - "five"
-  - "follow"
-  - "forward"
   - "four"
-  - "go"
-  - "happy"
-  - "house"
-  - "learn"
-  - "left"
   - "marvin"
   - "nine"
-  - "no"
-  - "off"
-  - "on"
   - "one"
-  - "right"
   - "seven"
-  - "sheila"
   - "six"
-  - "stop"
   - "three"
-  - "tree"
   - "two"
-  - "up"
-  - "visual"
-  - "wow"
-  - "yes"
   - "zero"
 
 
@@ -62,3 +38,11 @@ remote_name: "training-s3-bucket-runpod/test"
 cloud_sync: false
 
 warmup_steps: 1000
+
+
+silence_pool_size: 1000
+
+keyword_weight: 0.7
+unknown_weight: 0.2
+silence_weight: 0.1
+

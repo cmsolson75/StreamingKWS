@@ -128,6 +128,15 @@ class AudioStream:
         self.inference_runner = inference_runner
         self.labels = labels
         self.silence_threshold = 0.01
+        self.threshold = 0.7
+        self.cooldown = time.time()
+        self.cooldown_time = 1.0
+
+    def can_trigger(self):
+        return time.time() >= self.cooldown
+
+    def update_cooldown(self):
+        self.cooldown = time.time() + self.cooldown_time
 
     def callback(self, indata, frames, time, status):
         if status:
@@ -135,7 +144,6 @@ class AudioStream:
         self.buffer.put_many(indata[:, 0])
 
     def process_audio(self):
-        last_pred = None
         with sd.InputStream(
             samplerate=self.samplerate,
             channels=self.channels,
@@ -143,23 +151,19 @@ class AudioStream:
             dtype="float32",
             blocksize=0,
         ):
-            print("Starting RMS checker")
             try:
                 while True:
                     time.sleep(0.2)
                     data = self.buffer.get()
                     if len(data) >= self.buffer_size:
-                        rms = np.sqrt(np.mean(data**2))
-                        if rms < self.silence_threshold:
-                            last_pred = None
                         probs = self.inference_runner(data)
                         probs = probs.squeeze(0)
                         highest_prob_idx = torch.argmax(probs)
-                        if probs[highest_prob_idx] > 0.7:
-                            label = self.labels[highest_prob_idx.item()]
-                            if label != last_pred:
+                        if probs[highest_prob_idx] > self.threshold:
+                            if self.can_trigger():
+                                label = self.labels[highest_prob_idx.item()]
                                 print(f"Prediction: {label}")
-                                last_pred = label
+                                self.update_cooldown()
             except KeyboardInterrupt:
                 print("Stopped")
 

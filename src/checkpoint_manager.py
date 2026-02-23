@@ -67,9 +67,7 @@ class CheckpointManager:
         self.ckpt_dir = self.run_manager.path / "checkpoints"
         self.ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    def save(
-        self, model: nn.Module, step: int, best: bool, best_acc: float, **train_state
-    ):
+    def save(self, model: nn.Module, step: int, best: bool, **train_state):
         step_dir = self.ckpt_dir / f"step_{step:06d}"
         step_dir.mkdir(exist_ok=True)
 
@@ -77,8 +75,12 @@ class CheckpointManager:
         state_path = step_dir / "train_state.pt"
 
         save_file(model.state_dict(), model_path)
-        state = {k: v.state_dict() for k, v in train_state.items()}
-        state["best_acc"] = best_acc
+        state = {}
+        for k, v in train_state.items():
+            if hasattr(v, "state_dict"):
+                state[k] = v.state_dict()
+            else:
+                state[k] = v
         torch.save(state, state_path)
 
         # latest pointer
@@ -114,7 +116,7 @@ class CheckpointManager:
     def load(self, model: nn.Module, **train_state):
         result = self.load_latest()
         if result is None:
-            return 0, 0.0
+            return 0, 0.0, 0
         step_dir, step = result
         state_dict = load_file(step_dir / "model.safetensors")
         model.load_state_dict(state_dict)
@@ -123,7 +125,7 @@ class CheckpointManager:
         for name, obj in train_state.items():
             if name in saved_state:
                 obj.load_state_dict(saved_state[name])
-        return step, saved_state["best_acc"]
+        return step, saved_state["best_acc"], state_dict
 
 
 if __name__ == "__main__":

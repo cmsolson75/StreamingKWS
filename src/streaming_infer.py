@@ -106,7 +106,7 @@ def load_cfg_model_state(
 
 
 def load_model(cfg: Config, state_dict: Dict[str, torch.Tensor]) -> nn.Module:
-    model = AudioClassifier(len(cfg.subset)).to(cfg.device)
+    model = AudioClassifier(len(cfg.subset) + 2).to(cfg.device)
     model.load_state_dict(state_dict)
     model.eval()
     return model
@@ -131,6 +131,33 @@ class AudioStream:
         self.threshold = 0.7
         self.cooldown = time.time()
         self.cooldown_time = 1.0
+        self.state = {
+            "Idle": True,
+            "Listening": False,
+        }
+
+        self.listen_time = 5.0
+        self.listening = time.time()
+
+        self.number_map = {
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+            "six": 6,
+            "seven": 7,
+            "eight": 8,
+            "nine": 9,
+        }
+
+    def change_state(self) -> None:
+        if self.state["Idle"]:
+            self.state["Idle"] = False
+            self.state["Listening"] = True
+        else:
+            self.state["Idle"] = True
+            self.state["Listening"] = False
 
     def can_trigger(self):
         return time.time() >= self.cooldown
@@ -138,10 +165,21 @@ class AudioStream:
     def update_cooldown(self):
         self.cooldown = time.time() + self.cooldown_time
 
+    def update_listening(self):
+        self.listening = time.time() + self.listen_time
+
+    def stop_listening(self) -> None:
+        return time.time() >= self.listening
+
     def callback(self, indata, frames, time, status):
         if status:
             print(status)
         self.buffer.put_many(indata[:, 0])
+
+    def check_wakeword(self, word: str):
+        if word == "marvin":
+            return True
+        return False
 
     def process_audio(self):
         with sd.InputStream(
@@ -152,17 +190,47 @@ class AudioStream:
             blocksize=0,
         ):
             try:
+                numbers = []
                 while True:
                     time.sleep(0.2)
                     data = self.buffer.get()
                     if len(data) >= self.buffer_size:
-                        probs = self.inference_runner(data)
+                        probs: torch.Tensor = self.inference_runner(data)
                         probs = probs.squeeze(0)
                         highest_prob_idx = torch.argmax(probs)
+
+                        if self.stop_listening() and self.state["Listening"]:
+                            self.change_state()
+                            print("Done")
+                            print(numbers)
+                            numbers = []
+
                         if probs[highest_prob_idx] > self.threshold:
                             if self.can_trigger():
                                 label = self.labels[highest_prob_idx.item()]
-                                print(f"Prediction: {label}")
+                                if (
+                                    self.check_wakeword(label)
+                                    and not self.state["Listening"]
+                                ):
+                                    print("Listening")
+                                    self.change_state()
+                                    self.update_listening()
+                                    self.update_cooldown()
+
+                                    continue
+
+                                if self.state["Listening"]:
+                                    if label == "stop":
+                                        self.change_state()
+                                        print("Stopping...")
+                                        print(",".join([str(num) for num in numbers]))
+                                        numbers = []
+                                    self.update_listening()
+                                    # if self.state['Listening']:
+                                    num = self.number_map.get(label)
+                                    if num is not None:
+                                        numbers.append(num)
+                                        print(f"Number: {num}")
                                 self.update_cooldown()
             except KeyboardInterrupt:
                 print("Stopped")

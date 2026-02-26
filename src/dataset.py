@@ -165,17 +165,18 @@ class OOVDataset(Dataset):
 
 
 class SyntheticSilenceDataset(Dataset):
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, size: int):
         self.cfg = cfg
         self.num_samples = int(self.cfg.clip_length * self.cfg.sample_rate)
         _, self.stoi, _ = load_labels(self.cfg)
+        self.size = size
 
     def generate_silence(self, noise_floor=-60):
         amplitude = 10 ** (noise_floor / 20)
         return torch.randn((1, self.num_samples)) * amplitude
 
     def __len__(self):
-        return self.cfg.silence_pool_size
+        return self.size
 
     def __getitem__(self, _):
         return self.generate_silence(), self.stoi["<SILENCE>"]
@@ -183,8 +184,10 @@ class SyntheticSilenceDataset(Dataset):
 
 if __name__ == "__main__":
     cfg = Config.from_yaml("configs/config.yaml")
-    dataset = SpeechCommands(cfg, "train")
-    silence = SyntheticSilenceDataset(cfg)
-    unknown = OOVDataset(cfg)
+    split = "test"
+    sc = SpeechCommands(cfg, split)
+    unknown = OOVDataset(cfg, split)
+    silence_pool_size = int((len(sc) + len(unknown)) * cfg.silence_weight)
+    silence = SyntheticSilenceDataset(cfg, silence_pool_size)
 
     breakpoint()

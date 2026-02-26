@@ -42,20 +42,26 @@ Issues with buffer
 ---
 
 ---
-Setup Docker + ECR
-- Get working in RunPod
 
 Setup Augmentations
+- Random Mix in from room sounds
+- Volume augmentation
+- Spectral Augment
+
+
 Setup Sampler: Real, Unknown, Silence
 - TEST DIFFERENCE
 - Need to make sure you save the sampler step (step * bs) - this is for resume logic to work.
 
+NEED TO RE ORGANIZE THE CODEBASE - its confusing
 
 ---
 
 Model
 - Setup TC ResNet
 
+Setup Docker + ECR
+- Get working in RunPod
 
 Sweep HPO
 - SET MAX BS / What you set to for the sweep

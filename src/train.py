@@ -1,7 +1,12 @@
 import torch
 from .seed import seed_everything
 from .train_utils import train, evaluate
-from .dataloaders import load_dataloader
+from .dataloaders import (
+    load_dataloader,
+    load_oov_loader,
+    load_silence_loader,
+    load_speech_cmds,
+)
 from .configs import Config
 from .model import AudioClassifier
 from .transforms import DbMelSpec
@@ -101,7 +106,7 @@ def launch():
     torch.backends.cudnn.allow_tf32 = True
 
     db_mel_spec = DbMelSpec(cfg).to(cfg.device)
-    model = AudioClassifier(len(cfg.subset)).to(cfg.device)
+    model = AudioClassifier(len(cfg.subset) + 2).to(cfg.device)
     ema_model = EMA(
         model,
         beta=0.999,
@@ -121,6 +126,9 @@ def launch():
 
     train_loader = load_dataloader(cfg, "train")
     val_loader = load_dataloader(cfg, "val")
+    oov_loader = load_oov_loader(cfg, "val")
+    sc_loader = load_speech_cmds(cfg, "val")
+    silence_loader = load_silence_loader(cfg)
 
     start = time.perf_counter()
     train(
@@ -132,6 +140,9 @@ def launch():
         cfg,
         train_loader,
         val_loader,
+        oov_loader,
+        sc_loader,
+        silence_loader,
         cfg.eval_period,
         cfg.log_period,
         db_mel_spec,

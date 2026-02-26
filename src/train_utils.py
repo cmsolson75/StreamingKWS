@@ -50,6 +50,9 @@ def train(
     cfg: Config,
     train_loader: torch.utils.data.DataLoader,
     val_loader: torch.utils.data.DataLoader,
+    oov_loader: torch.utils.data.DataLoader,
+    sc_loader: torch.utils.data.DataLoader,
+    silence_loader: torch.utils.data.DataLoader,
     eval_period: int,
     log_period: int,
     db_mel_spec: DbMelSpec,
@@ -75,8 +78,16 @@ def train(
             val_loss, val_acc = evaluate(
                 ema_model.ema_model, cfg, val_loader, db_mel_spec
             )
+
+            _, oov_acc = evaluate(ema_model.ema_model, cfg, oov_loader, db_mel_spec)
+            _, sc_acc = evaluate(ema_model.ema_model, cfg, sc_loader, db_mel_spec)
+
+            _, silence_acc = evaluate(
+                ema_model.ema_model, cfg, silence_loader, db_mel_spec
+            )
+
             print(
-                f"{step}/{cfg.max_steps}: val_loss={val_loss:.4f} val_acc={val_acc:.4f}"
+                f"{step}/{cfg.max_steps}: val_loss={val_loss:.4f} total_val_acc={val_acc:.4f}, oov_acc={oov_acc:.4f}, sc_acc={sc_acc:.4f}, silece_acc={silence_acc:.4f}"
             )
             metric_logger.log(
                 {"split": "val", "loss": val_loss, "accuracy": val_acc, "step": step}
@@ -110,6 +121,7 @@ def evaluate(model: nn.Module, cfg: Config, loader, db_mel_spec: DbMelSpec):
         total_loss += loss.item() * bs
         total_acc += acc * bs
         n += bs
+
     return total_loss / n, total_acc / n
 
 

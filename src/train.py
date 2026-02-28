@@ -6,6 +6,7 @@ from .dataloaders import (
     load_oov_loader,
     load_silence_loader,
     load_speech_cmds,
+    load_background_loader,
 )
 from .configs import Config
 from .model import AudioClassifier
@@ -129,6 +130,14 @@ def launch():
     oov_loader = load_oov_loader(cfg, "val")
     sc_loader = load_speech_cmds(cfg, "val")
     silence_loader = load_silence_loader(cfg)
+    background_loader = load_background_loader(cfg)
+
+    eval_loaders = [
+        ("oov", oov_loader),
+        ("kw", sc_loader),
+        ("silence", silence_loader),
+        ("background", background_loader),
+    ]
 
     start = time.perf_counter()
     train(
@@ -140,9 +149,7 @@ def launch():
         cfg,
         train_loader,
         val_loader,
-        oov_loader,
-        sc_loader,
-        silence_loader,
+        eval_loaders,
         cfg.eval_period,
         cfg.log_period,
         db_mel_spec,

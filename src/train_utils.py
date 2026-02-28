@@ -50,9 +50,11 @@ def train(
     cfg: Config,
     train_loader: torch.utils.data.DataLoader,
     val_loader: torch.utils.data.DataLoader,
-    oov_loader: torch.utils.data.DataLoader,
-    sc_loader: torch.utils.data.DataLoader,
-    silence_loader: torch.utils.data.DataLoader,
+    eval_loaders: list[tuple[str, torch.utils.data.DataLoader]],
+    # val_loader: torch.utils.data.DataLoader,
+    # oov_loader: torch.utils.data.DataLoader,
+    # sc_loader: torch.utils.data.DataLoader,
+    # silence_loader: torch.utils.data.DataLoader,
     eval_period: int,
     log_period: int,
     db_mel_spec: DbMelSpec,
@@ -69,32 +71,31 @@ def train(
             model, ema_model, optimizer, scaler, scheduler, it, cfg, db_mel_spec
         )
 
-        if step % log_period == 0 or step == 1:
+        if step % log_period == 0:
             print(f"{step}/{cfg.max_steps}: train_loss={train_loss.item():.4f}")
             metric_logger.log(
                 {"split": "train", "loss": train_loss.item(), "step": step}
             )
-        if step % eval_period == 0 or step == 1:
+        if step % eval_period == 0:
             val_loss, val_acc = evaluate(
                 ema_model.ema_model, cfg, val_loader, db_mel_spec
             )
 
-            _, oov_acc = evaluate(ema_model.ema_model, cfg, oov_loader, db_mel_spec)
-            _, sc_acc = evaluate(ema_model.ema_model, cfg, sc_loader, db_mel_spec)
+            output_metrics = {"val_loss": val_loss, "val_acc": val_acc}
+            for name, loader in eval_loaders:
+                _, eval_acc = evaluate(ema_model.ema_model, cfg, loader, db_mel_spec)
+                output_metrics[f"{name}_acc"] = eval_acc
 
-            _, silence_acc = evaluate(
-                ema_model.ema_model, cfg, silence_loader, db_mel_spec
-            )
+            parts = [
+                f"{step}/{cfg.max_steps}",
+            ]
+            for k, v in output_metrics.items():
+                parts.append(f"{k}={v:.4f}")
+            print("  ".join(parts))
 
-            print(
-                f"{step}/{cfg.max_steps}: val_loss={val_loss:.4f} total_val_acc={val_acc:.4f}, oov_acc={oov_acc:.4f}, sc_acc={sc_acc:.4f}, silece_acc={silence_acc:.4f}"
-            )
-            metric_logger.log(
-                {"split": "val", "loss": val_loss, "accuracy": val_acc, "step": step}
-            )
-            best = False
-            if best_acc < val_acc:
-                best = True
+            metric_logger.log({"split": "val", "step": step, **output_metrics})
+            best = val_acc > best_acc
+            if best:
                 best_acc = val_acc
             checkpoint_manager.save(
                 ema_model.ema_model,

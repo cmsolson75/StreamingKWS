@@ -1,3 +1,20 @@
-model: "runs/20260226T000639Z_9f251d3d15/checkpoints/best.json"
+model: "runs/20260227T211657Z_04d881799e/checkpoints/best.json"
 label_file: "labels.json"
 device: "cpu"
+wakeword: "marvin"
+stopword: "stop"
+threshold: 0.7
+cooldown_time: 1.0
+sample_rate: 16000
+channels: 1
+buffer_size: 16000
+number_map:
+  one: 1
+  two: 2
+  three: 3
+  four: 4
+  five: 5
+  six: 6
+  seven: 7
+  eight: 8
+  nine: 9

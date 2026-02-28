@@ -13,6 +13,7 @@ from pathlib import Path
 from safetensors.torch import load_file
 
 from typing import Dict, Tuple
+from enum import Enum, auto
 
 
 class CircularBuffer:
@@ -112,126 +113,100 @@ def load_model(cfg: Config, state_dict: Dict[str, torch.Tensor]) -> nn.Module:
     return model
 
 
+class AppState(Enum):
+    IDLE = auto()
+    LISTENING = auto()
+
+
 class AudioStream:
     def __init__(
         self,
-        samplerate,
-        channels,
-        buffer_size,
+        config: InferConfig,
         inference_runner: InferenceRunner,
         labels: list,
     ):
-        self.samplerate = samplerate
-        self.channels = channels
-        self.buffer_size = buffer_size
-        self.buffer = CircularBuffer(self.buffer_size)
+        self.cfg = config
+        self.buffer = CircularBuffer(self.cfg.buffer_size)
         self.inference_runner = inference_runner
         self.labels = labels
-        self.silence_threshold = 0.01
-        self.threshold = 0.7
+
         self.cooldown = time.time()
-        self.cooldown_time = 1.0
-        self.state = {
-            "Idle": True,
-            "Listening": False,
-        }
+        # self.cooldown_time = 1.0
+        self.state = AppState.IDLE
 
-        self.listen_time = 5.0
-        self.listening = time.time()
+        self.numbers = []
 
-        self.number_map = {
-            "one": 1,
-            "two": 2,
-            "three": 3,
-            "four": 4,
-            "five": 5,
-            "six": 6,
-            "seven": 7,
-            "eight": 8,
-            "nine": 9,
-        }
-
-    def change_state(self) -> None:
-        if self.state["Idle"]:
-            self.state["Idle"] = False
-            self.state["Listening"] = True
-        else:
-            self.state["Idle"] = True
-            self.state["Listening"] = False
+        # self.number_map = {
+        #     "one": 1,
+        #     "two": 2,
+        #     "three": 3,
+        #     "four": 4,
+        #     "five": 5,
+        #     "six": 6,
+        #     "seven": 7,
+        #     "eight": 8,
+        #     "nine": 9,
+        # }
 
     def can_trigger(self):
         return time.time() >= self.cooldown
 
     def update_cooldown(self):
-        self.cooldown = time.time() + self.cooldown_time
-
-    def update_listening(self):
-        self.listening = time.time() + self.listen_time
-
-    def stop_listening(self) -> None:
-        return time.time() >= self.listening
+        self.cooldown = time.time() + self.cfg.cooldown_time
 
     def callback(self, indata, frames, time, status):
         if status:
             print(status)
         self.buffer.put_many(indata[:, 0])
 
-    def check_wakeword(self, word: str):
-        if word == "marvin":
-            return True
-        return False
+    def detect_keyword(self, data: np.ndarray) -> str | None:
+        probs = self.inference_runner(data).squeeze(0)
+        max_idx = torch.argmax(probs)
+        if probs[max_idx] > self.cfg.threshold and self.can_trigger():
+            self.update_cooldown()
+            return self.labels[max_idx.item()]
+        return None
+
+    def _handle_idle(self, label: str):
+        if label == self.cfg.wakeword:
+            self.state = AppState.LISTENING
+            print("Listening")
+
+    def _handle_listening(self, label: str):
+        if label == "stop":
+            self.state = AppState.IDLE
+            print("Stopping...")
+            print(",".join(str(num) for num in self.numbers))
+            self.numbers = []
+            return
+
+        num = self.cfg.number_map.get(label)
+        if num is not None:
+            self.numbers.append(num)
+            print(f"Number: {num}")
 
     def process_audio(self):
         with sd.InputStream(
-            samplerate=self.samplerate,
-            channels=self.channels,
+            samplerate=self.cfg.sample_rate,
+            channels=self.cfg.channels,
             callback=self.callback,
             dtype="float32",
             blocksize=0,
         ):
             try:
-                numbers = []
                 while True:
                     time.sleep(0.2)
                     data = self.buffer.get()
-                    if len(data) >= self.buffer_size:
-                        probs: torch.Tensor = self.inference_runner(data)
-                        probs = probs.squeeze(0)
-                        highest_prob_idx = torch.argmax(probs)
+                    if len(data) < self.cfg.buffer_size:
+                        continue
+                    label = self.detect_keyword(data)
+                    if label is None:
+                        continue
 
-                        if self.stop_listening() and self.state["Listening"]:
-                            self.change_state()
-                            print("Done")
-                            print(numbers)
-                            numbers = []
-
-                        if probs[highest_prob_idx] > self.threshold:
-                            if self.can_trigger():
-                                label = self.labels[highest_prob_idx.item()]
-                                if (
-                                    self.check_wakeword(label)
-                                    and not self.state["Listening"]
-                                ):
-                                    print("Listening")
-                                    self.change_state()
-                                    self.update_listening()
-                                    self.update_cooldown()
-
-                                    continue
-
-                                if self.state["Listening"]:
-                                    if label == "stop":
-                                        self.change_state()
-                                        print("Stopping...")
-                                        print(",".join([str(num) for num in numbers]))
-                                        numbers = []
-                                    self.update_listening()
-                                    # if self.state['Listening']:
-                                    num = self.number_map.get(label)
-                                    if num is not None:
-                                        numbers.append(num)
-                                        print(f"Number: {num}")
-                                self.update_cooldown()
+                    if self.state == AppState.IDLE:
+                        self._handle_idle(label)
+                    elif self.state == AppState.LISTENING:
+                        self._handle_listening(label)
             except KeyboardInterrupt:
                 print("Stopped")
 
@@ -246,6 +221,6 @@ if __name__ == "__main__":
 
     labels = load_labels("labels.json")
     audio_stream = AudioStream(
-        16_000, 1, buffer_size=16_000, inference_runner=inference_runner, labels=labels
+        config=infer_cfg, inference_runner=inference_runner, labels=labels
     )
     audio_stream.process_audio()

@@ -1,7 +1,7 @@
 import yaml
-from typing import Optional, List, Self, Literal
+from typing import Optional, List, Self, Literal, Annotated
 from pathlib import Path
-from pydantic import BaseModel, PositiveInt, PositiveFloat, model_validator
+from pydantic import BaseModel, PositiveInt, PositiveFloat, model_validator, Field
 import torch
 import json
 import hashlib
@@ -37,11 +37,18 @@ class Config(BaseModel, frozen=True):
 
     warmup_steps: int = 1000
 
-    silence_pool_size: int = 1000  # number does not matter
+    # silence_pool_size: int = 1000  # number does not matter
 
-    keyword_weight: float = 0.7
-    unknown_weight: float = 0.2
-    silence_weight: float = 0.1
+    keyword_weight: Annotated[float, Field(ge=0, le=1)] = 0.7
+    oov_weight: Annotated[float, Field(ge=0, le=1)] = 0.2
+    silence_weight: Annotated[float, Field(ge=0, le=1)] = 0.05
+    background_weight: Annotated[float, Field(ge=0, le=1)] = 0.05
+
+    use_augmentations: bool = False
+    noise_path: str
+    prob_noise_mix_in: Annotated[float, Field(ge=0, le=1)] = 0.75
+    min_snr_db: float = -5.0
+    max_snr_db: float = 25.0
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Self:
@@ -102,11 +109,44 @@ class Config(BaseModel, frozen=True):
             return self.model_copy(update={"device": device})
         return self
 
+    @model_validator(mode="after")
+    def check_weights_sum_to_one(self) -> Self:
+        current_sum = round(
+            self.keyword_weight
+            + self.oov_weight
+            + self.silence_weight
+            + self.background_weight,
+            4,
+        )
+        if current_sum != 1.0:
+            raise ValueError(f"Sampler probs don't add up to 1.0, got {current_sum}")
+        return self
+
 
 class InferConfig(BaseModel, frozen=True):
     model: str
     label_file: str
     device: str
+    wakeword: str = "marvin"
+    stopword: str = "stop"
+    threshold: float = 0.7
+    cooldown_time: float = 1.0
+    sample_rate: int = 16000
+    channels: int = 1
+    buffer_size: int = 16000
+    number_map: dict[str, int] = Field(
+        default_factory=lambda: {
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+            "six": 6,
+            "seven": 7,
+            "eight": 8,
+            "nine": 9,
+        }
+    )
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Self:

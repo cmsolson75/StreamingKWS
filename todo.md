@@ -56,33 +56,32 @@ Setup Sampler: Real, Unknown, Silence
 NEED TO RE ORGANIZE THE CODEBASE - its confusing
 
 ---
-
-Model
-- Setup TC ResNet
-
 Setup Docker + ECR
 - Get working in RunPod
 
-Sweep HPO
-- SET MAX BS / What you set to for the sweep
-- LR Finder
-- HPO - simple random sweep / log spaced grid
-- Test
-    - 5k steps
-    - 10k steps
-    - 40k steps
-    - Compare the configs found after fully trained
+Setup HPO sweeper setup
+- Sweep HPO
+    - SET MAX BS / What you set to for the sweep
+    - LR Finder
+    - HPO - simple random sweep / log spaced grid
+    - Test
+        - 5k steps
+        - 10k steps
+        - 40k steps
+        - Compare the configs found after fully trained
+
+Implement a bunch of models
+- Vanilla CNN - DONE
+- MobileNetV2
+- TC-ResNet
+- BC-ResNet
+- Understand the receptive field of each of these
 
 
 Setup
 - Torchscript
 - Time differences
 - Hook into inference engine
-
-
-Look into
-- Receptive Field: How big is the receptive field of a model.
-
 
 What I am building
 - Phone number system with wake word
@@ -91,7 +90,6 @@ What I am building
 - Need to have a state where model is listening for numbers
     - Need to have a cut off it it hears no numbers
 - Then we can output a phone number 
-- StateMachine, CircularBuffer
 
 
 Additional Fun

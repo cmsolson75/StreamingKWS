@@ -1,23 +1,38 @@
 from torch.utils.data import DataLoader, ConcatDataset
 from .configs import Config
-from .dataset import SpeechCommands, OOVDataset, SyntheticSilenceDataset
+from .dataset import (
+    SpeechCommands,
+    OOVDataset,
+    SyntheticSilenceDataset,
+    BackgroundNoiseDataset,
+)
 from .weighted_sampler import WeightedSampler, WeightedSamplerFinite
+from .augmentations import build_augmentation_pipeline, RandomNoiseMixIn
 
 
 def load_dataloader(cfg: Config, split: str, start_step: int | None = None):
-    sc = SpeechCommands(cfg, split)
-    unknown = OOVDataset(cfg, split)
+    augmentation_pipeline = build_augmentation_pipeline([RandomNoiseMixIn(cfg)])
+    bg_augmentation_pipeline = None
 
-    silence_pool_size = int((len(sc) + len(unknown)) * cfg.silence_weight)
-    silence = SyntheticSilenceDataset(cfg, silence_pool_size)
+    sc = SpeechCommands(cfg, split, augmentation_pipeline)
+    oov = OOVDataset(cfg, split, augmentation_pipeline)
 
-    dataset = ConcatDataset([sc, unknown, silence])
+    pool_size = int((len(sc) + len(oov)) * cfg.silence_weight)
+    silence = SyntheticSilenceDataset(cfg, pool_size, augmentation_pipeline)
+    background = BackgroundNoiseDataset(cfg, pool_size, bg_augmentation_pipeline)
+
+    dataset = ConcatDataset([sc, oov, silence, background])
     if split == "train":
         if start_step is None:
             start_step = 0
         sampler = WeightedSampler(
             dataset,
-            weights=[cfg.keyword_weight, cfg.unknown_weight, cfg.silence_weight],
+            weights=[
+                cfg.keyword_weight,
+                cfg.oov_weight,
+                cfg.silence_weight,
+                cfg.background_weight,
+            ],
             seed=cfg.seed,
             start_step=start_step,
         )
@@ -32,17 +47,17 @@ def load_dataloader(cfg: Config, split: str, start_step: int | None = None):
     else:
         sampler = WeightedSamplerFinite(
             dataset,
-            weights=[cfg.keyword_weight, cfg.unknown_weight, cfg.silence_weight],
+            weights=[
+                cfg.keyword_weight,
+                cfg.oov_weight,
+                cfg.silence_weight,
+                cfg.background_weight,
+            ],
             seed=cfg.seed,
             start_step=start_step,
         )
         loader = DataLoader(dataset, sampler=sampler, batch_size=cfg.batch_size)
     return loader
-
-
-def infinite_dataloader(loader: DataLoader):
-    while True:
-        yield from loader
 
 
 def load_speech_cmds(cfg: Config, split: str):
@@ -56,8 +71,13 @@ def load_oov_loader(cfg: Config, split: str):
 
 
 def load_silence_loader(cfg: Config):
-    synth_silence_dataset = SyntheticSilenceDataset(cfg, 8000)
+    synth_silence_dataset = SyntheticSilenceDataset(cfg, 4000)
     return DataLoader(synth_silence_dataset, shuffle=False, batch_size=cfg.batch_size)
+
+
+def load_background_loader(cfg: Config):
+    background_dataset = BackgroundNoiseDataset(cfg, 4000)
+    return DataLoader(background_dataset, shuffle=False, batch_size=cfg.batch_size)
 
 
 # if __name__ == "__main__":

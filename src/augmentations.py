@@ -18,13 +18,13 @@ class RandomNoiseMixIn(Augmentation):
 
     def __init__(self, cfg: Config, eps: float = 1e-8):
         self.cfg = cfg
-        self.path = Path(cfg.noise_path)
+        self.path = Path(cfg.augment.noise_path)
         self.data: list[torch.Tensor] = self.load_data()
         if len(self.data) == 0:
             raise ValueError("Random noise folder empty")
 
         self.eps = eps
-        self.generator = torch.Generator().manual_seed(self.cfg.seed)
+        self.generator = torch.Generator().manual_seed(self.cfg.env.seed)
 
     def load_data(self) -> list[torch.Tensor]:
         data = []
@@ -33,8 +33,10 @@ class RandomNoiseMixIn(Augmentation):
                 continue
             audio, sr = torchaudio.load(file)
             # Ensure all audio is the global sample rate
-            if sr != self.cfg.sample_rate:
-                audio = torchaudio.functional.resample(audio, sr, self.cfg.sample_rate)
+            if sr != self.cfg.preprocess.sample_rate:
+                audio = torchaudio.functional.resample(
+                    audio, sr, self.cfg.preprocess.sample_rate
+                )
             # ensure shape and mono
             if audio.ndim != 2:
                 audio = audio.unsqueeze(0)
@@ -65,7 +67,9 @@ class RandomNoiseMixIn(Augmentation):
 
     def _get_gain_factor(self, noise: torch.Tensor, x: torch.Tensor) -> float:
         snr = torch.empty(1).uniform_(
-            self.cfg.min_snr_db, self.cfg.max_snr_db, generator=self.generator
+            self.cfg.augment.min_snr_db,
+            self.cfg.augment.max_snr_db,
+            generator=self.generator,
         )
         noise_power = torch.mean(noise**2) + self.eps
         inp_power = torch.mean(x**2)
@@ -81,7 +85,7 @@ class RandomNoiseMixIn(Augmentation):
 
     def apply(self, x: torch.Tensor) -> torch.Tensor:
         p = torch.rand(1, generator=self.generator).item()
-        if p < self.cfg.prob_noise_mix_in:
+        if p < self.cfg.augment.prob_noise_mix_in:
             noise = self._get_random_noise_file()
             noise = self._random_shape_match(noise, x)
 
@@ -92,7 +96,22 @@ class RandomNoiseMixIn(Augmentation):
             return x
 
 
-class RandomGain(Augmentation): ...
+class RandomGain(Augmentation):
+    def __init__(self, cfg: Config):
+        self.cfg = cfg
+        self.generator = torch.Generator().manual_seed(self.cfg.env.seed)
+
+    def apply(self, x: torch.Tensor) -> torch.Tensor:
+        p = torch.rand(1, generator=self.generator).item()
+        if p < self.cfg.augment.prob_gain_aug:
+            gain_db = torch.empty(1).uniform_(
+                self.cfg.augment.min_db_gain,
+                self.cfg.augment.max_db_gain,
+                generator=self.generator,
+            )
+            x = torchaudio.functional.gain(x, gain_db)
+            return x
+        return x
 
 
 # More of audio augmentations

@@ -23,22 +23,25 @@ def training_step(
 ):
     model.train()
     x, y = next(iter_loader)
-    x, y = x.to(cfg.device), y.to(cfg.device)
+    x, y = x.to(cfg.train.device), y.to(cfg.train.device)
     # Batched
     x = db_mel_spec(x)
 
-    with torch.autocast(device_type=cfg.device, enabled=cfg.amp):
+    with torch.autocast(device_type=cfg.train.device, enabled=cfg.train.amp):
         logits = model(x)
         loss = F.cross_entropy(logits, y)
 
     optimizer.zero_grad()
 
     scaler.scale(loss).backward()
+    scaler.unscale_(optimizer)
+    total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
     scaler.step(optimizer)
     ema_model.update()
     scaler.update()
     scheduler.step()
-    return loss
+    return loss, total_norm
 
 
 def train(
@@ -51,10 +54,6 @@ def train(
     train_loader: torch.utils.data.DataLoader,
     val_loader: torch.utils.data.DataLoader,
     eval_loaders: list[tuple[str, torch.utils.data.DataLoader]],
-    # val_loader: torch.utils.data.DataLoader,
-    # oov_loader: torch.utils.data.DataLoader,
-    # sc_loader: torch.utils.data.DataLoader,
-    # silence_loader: torch.utils.data.DataLoader,
     eval_period: int,
     log_period: int,
     db_mel_spec: DbMelSpec,
@@ -66,15 +65,22 @@ def train(
     model.train()
 
     it = iter(train_loader)
-    for step in range(start_step, cfg.max_steps + 1):
-        train_loss = training_step(
+    for step in range(start_step, cfg.train.max_steps + 1):
+        train_loss, total_norm = training_step(
             model, ema_model, optimizer, scaler, scheduler, it, cfg, db_mel_spec
         )
 
         if step % log_period == 0:
-            print(f"{step}/{cfg.max_steps}: train_loss={train_loss.item():.4f}")
+            print(
+                f"{step}/{cfg.train.max_steps}: train_loss={train_loss.item():.4f}, norm={total_norm:.4f}"
+            )
             metric_logger.log(
-                {"split": "train", "loss": train_loss.item(), "step": step}
+                {
+                    "split": "train",
+                    "loss": train_loss.item(),
+                    "step": step,
+                    "total_norm": total_norm.item(),
+                }
             )
         if step % eval_period == 0:
             val_loss, val_acc = evaluate(
@@ -87,7 +93,7 @@ def train(
                 output_metrics[f"{name}_acc"] = eval_acc
 
             parts = [
-                f"{step}/{cfg.max_steps}",
+                f"{step}/{cfg.train.max_steps}",
             ]
             for k, v in output_metrics.items():
                 parts.append(f"{k}={v:.4f}")
@@ -104,7 +110,7 @@ def train(
                 best_acc=best_acc,
                 optimizer=optimizer,
                 scaler=scaler,
-                sampler_step=step * cfg.batch_size,
+                sampler_step=step * cfg.train.batch_size,
             )
 
 
@@ -113,7 +119,7 @@ def evaluate(model: nn.Module, cfg: Config, loader, db_mel_spec: DbMelSpec):
     model.eval()
     total_loss, total_acc, n = 0, 0, 0
     for x, y in loader:
-        x, y = x.to(cfg.device), y.to(cfg.device)
+        x, y = x.to(cfg.train.device), y.to(cfg.train.device)
         x = db_mel_spec(x)
         logits = model(x)
         loss = F.cross_entropy(logits, y)

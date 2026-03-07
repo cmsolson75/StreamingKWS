@@ -6,7 +6,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from .configs import Config, InferConfig
-from .model import AudioClassifier
+from .model import model_factory
 from .transforms import DbMelSpec, AudioTransform
 import json
 from pathlib import Path
@@ -58,7 +58,7 @@ class CircularBuffer:
 
 
 class InferenceRunner(nn.Module):
-    def __init__(self, model: AudioClassifier, cfg: Config):
+    def __init__(self, model: nn.Module, cfg: Config):
         super().__init__()
         self.model = model
         model.eval()
@@ -66,7 +66,7 @@ class InferenceRunner(nn.Module):
         self.cfg = cfg
 
         self.transform = AudioTransform(cfg)
-        self.db_mel_spec = DbMelSpec(cfg)
+        self.db_mel_spec = DbMelSpec(cfg, augment=False)  # for inference
 
     @torch.inference_mode()
     def forward(self, x: np.ndarray) -> torch.Tensor:
@@ -107,7 +107,10 @@ def load_cfg_model_state(
 
 
 def load_model(cfg: Config, state_dict: Dict[str, torch.Tensor]) -> nn.Module:
-    model = AudioClassifier(len(cfg.subset) + 2).to(cfg.device)
+    num_classes = len(cfg.data.subset) + 2
+    model = model_factory(cfg.model.name, num_classes, cfg.train.dropout).to(
+        cfg.train.device
+    )
     model.load_state_dict(state_dict)
     model.eval()
     return model
@@ -135,18 +138,6 @@ class AudioStream:
         self.state = AppState.IDLE
 
         self.numbers = []
-
-        # self.number_map = {
-        #     "one": 1,
-        #     "two": 2,
-        #     "three": 3,
-        #     "four": 4,
-        #     "five": 5,
-        #     "six": 6,
-        #     "seven": 7,
-        #     "eight": 8,
-        #     "nine": 9,
-        # }
 
     def can_trigger(self):
         return time.time() >= self.cooldown

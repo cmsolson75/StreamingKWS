@@ -14,8 +14,8 @@ def load_labels(
     write_json: bool = False,
     labels_path: str = "labels.json",
 ):
-    path = Path(cfg.path)
-    subset = set(cfg.subset) if cfg.subset is not None else set()
+    path = Path(cfg.data.path)
+    subset = set(cfg.data.subset) if cfg.data.subset is not None else set()
     labels = sorted(
         [
             p.name
@@ -44,8 +44,10 @@ class SpeechCommands(Dataset):
         augmentation_pipeline: AugmentationPipeline | None = None,
     ):
         self.cfg: Config = cfg
-        self.subset = set(self.cfg.subset) if self.cfg.subset is not None else set()
-        self.path: Path = Path(self.cfg.path)
+        self.subset = (
+            set(self.cfg.data.subset) if self.cfg.data.subset is not None else set()
+        )
+        self.path: Path = Path(self.cfg.data.path)
         self.split: str = split
         self.val_split = self.open_split("val")
         self.test_split = self.open_split("test")
@@ -102,7 +104,10 @@ class SpeechCommands(Dataset):
         else:
             audio = self.cache.get(audio_path)
 
-        if self.cfg.use_augmentations and self.augmentation_pipeline is not None:
+        if (
+            self.cfg.augment.use_augmentations
+            and self.augmentation_pipeline is not None
+        ):
             audio = self.augmentation_pipeline.apply(audio)
 
         return audio, self.stoi[label]
@@ -117,8 +122,10 @@ class OOVDataset(Dataset):
     ):
         self.cfg: Config = cfg
         self.split = split
-        self.subset = set(self.cfg.subset) if self.cfg.subset is not None else set()
-        self.path: Path = Path(self.cfg.path)
+        self.subset = (
+            set(self.cfg.data.subset) if self.cfg.data.subset is not None else set()
+        )
+        self.path: Path = Path(self.cfg.data.path)
         _, self.stoi, _ = load_labels(self.cfg)
         self.val_split = self.open_split("val")
         self.test_split = self.open_split("test")
@@ -177,7 +184,10 @@ class OOVDataset(Dataset):
             self.cache[audio_path] = audio
         else:
             audio = self.cache.get(audio_path)
-        if self.cfg.use_augmentations and self.augmentation_pipeline is not None:
+        if (
+            self.cfg.augment.use_augmentations
+            and self.augmentation_pipeline is not None
+        ):
             audio = self.augmentation_pipeline.apply(audio)
 
         return audio, self.stoi[label]
@@ -191,7 +201,9 @@ class SyntheticSilenceDataset(Dataset):
         augmentation_pipeline: AugmentationPipeline | None = None,
     ):
         self.cfg = cfg
-        self.num_samples = int(self.cfg.clip_length * self.cfg.sample_rate)
+        self.num_samples = int(
+            self.cfg.preprocess.clip_length * self.cfg.preprocess.sample_rate
+        )
         _, self.stoi, _ = load_labels(self.cfg)
         self.size = size
         self.augmentation_pipeline = augmentation_pipeline
@@ -205,7 +217,10 @@ class SyntheticSilenceDataset(Dataset):
 
     def __getitem__(self, _) -> torch.Tensor:
         silence = self.generate_silence()
-        if self.cfg.use_augmentations and self.augmentation_pipeline is not None:
+        if (
+            self.cfg.augment.use_augmentations
+            and self.augmentation_pipeline is not None
+        ):
             silence = self.augmentation_pipeline.apply(silence)
         return silence, self.stoi["<SILENCE>"]
 
@@ -219,16 +234,18 @@ class BackgroundNoiseDataset(Dataset):
     ):
         self.cfg = cfg
         self.size = size
-        self.path = Path(cfg.noise_path)
+        self.path = Path(cfg.augment.noise_path)
         self.data: list[torch.Tensor] = self._load_noise()
         _, self.stoi, _ = load_labels(self.cfg)
         if len(self.data) == 0:
             raise ValueError("Random noise folder empty")
 
         self.augmentation_pipeline = augmentation_pipeline
-        self.generator = torch.Generator().manual_seed(self.cfg.seed)
+        self.generator = torch.Generator().manual_seed(self.cfg.env.seed)
 
-        self.expected_len = int(self.cfg.sample_rate * self.cfg.clip_length)
+        self.expected_len = int(
+            self.cfg.preprocess.sample_rate * self.cfg.preprocess.clip_length
+        )
 
     def _load_noise(self) -> list[torch.Tensor]:
         data = []
@@ -237,8 +254,10 @@ class BackgroundNoiseDataset(Dataset):
                 continue
             audio, sr = torchaudio.load(file)
             # Ensure all audio is the global sample rate
-            if sr != self.cfg.sample_rate:
-                audio = torchaudio.functional.resample(audio, sr, self.cfg.sample_rate)
+            if sr != self.cfg.preprocess.sample_rate:
+                audio = torchaudio.functional.resample(
+                    audio, sr, self.cfg.preprocess.sample_rate
+                )
             # ensure shape and mono
             if audio.ndim != 2:
                 audio = audio.unsqueeze(0)
@@ -263,7 +282,10 @@ class BackgroundNoiseDataset(Dataset):
     def __getitem__(self, _: int) -> torch.Tensor:
         noise = self._get_random_noise()
         noise = self._random_crop(noise)
-        if self.cfg.use_augmentations and self.augmentation_pipeline is not None:
+        if (
+            self.cfg.augment.use_augmentations
+            and self.augmentation_pipeline is not None
+        ):
             noise = self.augmentation_pipeline.apply(noise)
         return noise, self.stoi["<SILENCE>"]
 
@@ -273,7 +295,7 @@ if __name__ == "__main__":
     split = "test"
     sc = SpeechCommands(cfg, split)
     unknown = OOVDataset(cfg, split)
-    silence_pool_size = int((len(sc) + len(unknown)) * cfg.silence_weight)
+    silence_pool_size = int((len(sc) + len(unknown)) * cfg.sampler.silence_weight)
     silence = SyntheticSilenceDataset(cfg, silence_pool_size)
 
     breakpoint()

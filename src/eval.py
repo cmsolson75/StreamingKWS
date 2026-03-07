@@ -43,8 +43,8 @@ def load_cfg_model_state(model_path: str, device: str | None):
 
 
 def load_model(cfg: Config, state_dict) -> nn.Module:
-    db_mel_spec = DbMelSpec(cfg).to(cfg.device)
-    model = AudioClassifier(len(cfg.subset)).to(cfg.device)
+    db_mel_spec = DbMelSpec(cfg).to(cfg.train.device)
+    model = AudioClassifier(len(cfg.data.subset)).to(cfg.train.device)
     model.load_state_dict(state_dict)
     model.eval()
     return model, db_mel_spec

@@ -9,7 +9,7 @@ from .dataloaders import (
     load_background_loader,
 )
 from .configs import Config
-from .model import AudioClassifier
+from .model import model_factory
 from .transforms import DbMelSpec
 from .metric_logger import JSONLMetricLogger
 import time
@@ -36,14 +36,14 @@ def get_provenance(cfg: Config) -> dict:
         "machine": platform.machine(),
         "user": getpass.getuser(),
         "hostname": platform.node(),
-        "seed": cfg.seed,
+        "seed": cfg.env.seed,
     }
 
     prov["accelerator"] = (
         torch.cuda.get_device_name(0)
-        if torch.cuda.is_available() and cfg.device == "cuda"
+        if torch.cuda.is_available() and cfg.train.device == "cuda"
         else "MPS"
-        if torch.backends.mps.is_available() and cfg.device == "mps"
+        if torch.backends.mps.is_available() and cfg.train.device == "mps"
         else "CPU"
     )
 
@@ -55,10 +55,10 @@ def get_scheduler(
 ) -> torch.optim.lr_scheduler.LRScheduler:
     warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer=optimizer,
-        lr_lambda=lambda step: min((step + 1) / cfg.warmup_steps, 1.0),
+        lr_lambda=lambda step: min((step + 1) / cfg.train.warmup_steps, 1.0),
     )
 
-    cosine_decay_steps = cfg.max_steps - cfg.warmup_steps
+    cosine_decay_steps = cfg.train.max_steps - cfg.train.warmup_steps
     cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer=optimizer, T_max=cosine_decay_steps, eta_min=0.001
     )
@@ -66,7 +66,7 @@ def get_scheduler(
     scheduler = torch.optim.lr_scheduler.SequentialLR(
         optimizer=optimizer,
         schedulers=[warmup_scheduler, cosine_scheduler],
-        milestones=[cfg.warmup_steps],
+        milestones=[cfg.train.warmup_steps],
     )
     return scheduler
 
@@ -90,7 +90,7 @@ def launch():
     else:
         cfg = Config.from_yaml(args.config).with_overrides(overwrites)
 
-    run_manager = RunManager("runs", cfg, tags=args.tags, resume=cfg.resume)
+    run_manager = RunManager("runs", cfg, tags=args.tags, resume=cfg.env.resume)
     ckpt = CheckpointManager(run_manager)
     metrics_logger = JSONLMetricLogger(run_manager.path)
 
@@ -101,13 +101,19 @@ def launch():
             f.write(overwrite + "\n")
     print(f"Config: {cfg.model_dump_json(indent=4)}")
 
-    seed_everything(cfg.seed)
+    seed_everything(cfg.env.seed)
     torch.set_float32_matmul_precision("high")
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
+    torch.backends.cudnn.benchmark = True
 
-    db_mel_spec = DbMelSpec(cfg).to(cfg.device)
-    model = AudioClassifier(len(cfg.subset) + 2).to(cfg.device)
+    db_mel_spec = DbMelSpec(cfg, cfg.augment.use_augmentations).to(cfg.train.device)
+    num_classes = len(cfg.data.subset) + 2
+    model = model_factory(cfg.model.name, num_classes, cfg.train.dropout).to(
+        cfg.train.device
+    )
+    print(f"Total Model Params: {sum([p.numel() for p in model.parameters()])}")
+
     ema_model = EMA(
         model,
         beta=0.999,
@@ -116,12 +122,12 @@ def launch():
         update_after_step=100,
         include_online_model=False,
     )
-    scaler = torch.amp.GradScaler(cfg.device, enabled=cfg.amp)
-    optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
+    scaler = torch.amp.GradScaler(cfg.train.device, enabled=cfg.train.amp)
+    optim = torch.optim.AdamW(model.parameters(), lr=cfg.train.learning_rate)
 
     scheduler = get_scheduler(optim, cfg)
 
-    start_step, best_acc, state_dict = ckpt.load(model, scaler=scaler, optimizer=optim)
+    start_step, best_acc, _ = ckpt.load(model, scaler=scaler, optimizer=optim)
     if start_step > 0:
         print(f"Resumed from step {start_step}")
 
@@ -150,8 +156,8 @@ def launch():
         train_loader,
         val_loader,
         eval_loaders,
-        cfg.eval_period,
-        cfg.log_period,
+        cfg.train.eval_period,
+        cfg.train.log_period,
         db_mel_spec,
         checkpoint_manager=ckpt,
         start_step=start_step,
@@ -161,9 +167,9 @@ def launch():
 
     stop = time.perf_counter()
     total_time = stop - start
-    avg_wall_seconds_per_step = total_time / cfg.max_steps
-    steps_per_second = cfg.max_steps / total_time
-    samples_per_second = steps_per_second * cfg.batch_size
+    avg_wall_seconds_per_step = total_time / cfg.train.max_steps
+    steps_per_second = cfg.train.max_steps / total_time
+    samples_per_second = steps_per_second * cfg.train.batch_size
     print(
         f"Total wall Time: {total_time:.2f} seconds | "
         f"Throughput: {samples_per_second:.2f} samples/s | "
@@ -177,3 +183,4 @@ if __name__ == "__main__":
     launch()
 
 # Speed: 281 seconds for 10k steps with default settings: LETS UP BATCH
+# 10000/10000  val_loss=0.1625  val_acc=0.9470  oov_acc=0.9637  kw_acc=0.9670  silence_acc=0.7440  background_acc=0.9755

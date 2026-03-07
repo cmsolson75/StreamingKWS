@@ -1,58 +1,67 @@
-path: data/SpeechCommands/speech_commands_v0.02
-subset:  
-  - "eight"
-  - "five"
-  - "four"
-  - "marvin"
-  - "nine"
-  - "one"
-  - "seven"
-  - "six"
-  - "three"
-  - "two"
-  - "zero"
-  - "stop"
+data:
+  path: data/SpeechCommands/speech_commands_v0.02
+  subset:  
+    - "eight"
+    - "five"
+    - "four"
+    - "marvin"
+    - "nine"
+    - "one"
+    - "seven"
+    - "six"
+    - "three"
+    - "two"
+    - "zero"
+    - "stop"
+
+preprocess:
+  sample_rate: 16000
+  clip_length: 1.0
+  n_fft: 400 # 25ms
+  hop_len: 160
+  n_mels: 64
+
+train:
+  learning_rate: 0.003
+  batch_size: 512
+  num_workers: 8
+  persistent_workers: true
+  prefetch_factor: 2
+  pin_memory: false
+  device: "auto"
+  max_steps: 10000
+  amp: true
+  log_period: 200
+  eval_period: 2000
+  clip_norm: 10.0
+  warmup_steps: 1000
+  dropout: 0.5
+
+model:
+  name: tc_resnet8
 
 
-sample_rate: 16000
-clip_length: 1.0
-n_fft: 400 # 25ms
-hop_len: 160
-n_mels: 64
+augment:
+  use_augmentations: true
+  noise_path: data/SpeechCommands/speech_commands_v0.02/_background_noise_
+  prob_noise_mix_in: 0.75
+  min_snr_db: -5.0
+  max_snr_db: 25.0
+  prob_gain_aug: 0.75
+  min_db_gain: -15.0
+  max_db_gain: 5.0
+  freq_mask_param: 5
+  time_mask_param: 10
 
-learning_rate: 0.003
-batch_size: 64
-num_workers: 8
-persistent_workers: true
-prefetch_factor: 2
-pin_memory: false
-device: "auto"
-max_steps: 10000
-amp: true
-log_period: 200
-eval_period: 2000
+env:
+  seed: 42
+  # base_path: "runs"
+  resume: null # set to str if you are resuming
+  remote_name: "training-s3-bucket-runpod/test"
+  cloud_sync: false
 
-seed: 42
-base_path: "runs"
-resume: null # set to str if you are resuming
-remote_name: "training-s3-bucket-runpod/test"
-cloud_sync: false
-
-warmup_steps: 1000
-
-
-# silence_pool_size: 8500 # ~ 10% # make this dynamic for testing
-
-keyword_weight: 0.7
-oov_weight: 0.2
-# 10%
-silence_weight: 0.05
-background_weight: 0.05
-
-# Augmentation
-use_augmentations: true
-
-noise_path: data/SpeechCommands/speech_commands_v0.02/_background_noise_
-prob_noise_mix_in: 0.75
-min_snr_db: -5.0
-max_snr_db: 25.0
+sampler:
+  keyword_weight: 0.7
+  oov_weight: 0.2
+  silence_weight: 0.05
+  background_weight: 0.05

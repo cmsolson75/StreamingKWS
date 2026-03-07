@@ -28,7 +28,7 @@ class RunManager:
             self.path = Path(base_path) / f"{self.run_id}{slug}"
             self.path.mkdir(parents=True, exist_ok=True)
             cfg.to_json(self.path / "config.resolved.json")
-        self.s3_bucket = cfg.remote_name if cfg.cloud_sync else None
+        self.s3_bucket = cfg.env.remote_name if cfg.env.cloud_sync else None
 
         if self.s3_bucket:
             self._sync_pending = threading.Event()

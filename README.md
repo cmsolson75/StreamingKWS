@@ -144,18 +144,54 @@ Supported splits:
 uv run python -m src.streaming_infer
 ```
 
+Useful flags:
+
+```bash
+uv run python -m src.streaming_infer --config configs/infer.yaml
+uv run python -m src.streaming_infer --config configs/infer.yaml --out out.txt
+```
+
 Default behavior:
 - Say `marvin` to enter listening mode
 - Say digits (`one` ... `nine`) to collect numbers
-- Say `stop` to print collected sequence and return to idle
+- Say `stop` to print `Recorded Numbers: <digits>` and return to idle
+- If `--out <path>` is set, the digit sequence is appended as one line per capture
 
 ## Config Notes
 
 - `data.subset`: keywords to classify directly
 - `train.device`: `auto`, `cpu`, `cuda`, or `mps`
+- `model.name`: model architecture (`cnn` or `tc_resnet8`)
 - `sampler.*_weight`: must sum to `1.0`
 - `augment.use_augmentations`: enables waveform + spectrogram augmentation
 - `env.cloud_sync`: enables background S3 sync via `env.remote_name`
+
+## Model Options
+
+Current supported model names (set in `configs/config.yaml` under `model.name`):
+
+- `tc_resnet8` (default): temporal-convolution residual model over mel frames; usually the stronger baseline in this repo.
+- `cnn`: simpler 2D conv baseline over spectrogram input; useful for quick comparisons and debugging.
+
+How to switch:
+
+```yaml
+model:
+  name: tc_resnet8
+```
+
+or
+
+```yaml
+model:
+  name: cnn
+```
+
+You can also override at launch:
+
+```bash
+uv run python -m src.train --config configs/config.yaml model.name=cnn
+```
 
 ## Dev Commands
 

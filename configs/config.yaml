@@ -22,18 +22,18 @@ preprocess:
   n_mels: 64
 
 train:
-  learning_rate: 0.003
-  batch_size: 512
+  learning_rate: 0.001
+  batch_size: 64
   num_workers: 8
   persistent_workers: true
   prefetch_factor: 2
-  pin_memory: false
+  pin_memory: false # auto will turn this on with CUDA
   device: "auto"
   max_steps: 10000
   amp: true
   log_period: 200
   eval_period: 2000
-  clip_norm: 10.0
+  clip_norm: 10.0 # Essentially off
   warmup_steps: 1000
   dropout: 0.5
 
@@ -50,12 +50,11 @@ augment:
   prob_gain_aug: 0.75
   min_db_gain: -15.0
   max_db_gain: 5.0
-  freq_mask_param: 5
-  time_mask_param: 10
+  freq_mask_param: 0 # OFF
+  time_mask_param: 0 # OFF
 
 env:
   seed: 42
-  # base_path: "runs"
   resume: null # set to str if you are resuming
   remote_name: "training-s3-bucket-runpod/test"
   cloud_sync: false

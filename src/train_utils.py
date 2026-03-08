@@ -35,7 +35,7 @@ def training_step(
 
     scaler.scale(loss).backward()
     scaler.unscale_(optimizer)
-    total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.train.clip_norm)
 
     scaler.step(optimizer)
     ema_model.update()
@@ -110,6 +110,7 @@ def train(
                 best_acc=best_acc,
                 optimizer=optimizer,
                 scaler=scaler,
+                scheduler=scheduler,
                 sampler_step=step * cfg.train.batch_size,
             )
 

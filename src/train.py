@@ -127,11 +127,13 @@ def launch():
 
     scheduler = get_scheduler(optim, cfg)
 
-    start_step, best_acc, _ = ckpt.load(model, scaler=scaler, optimizer=optim)
+    start_step, best_acc, sampler_step, state_dict = ckpt.load(
+        model, scaler=scaler, optimizer=optim
+    )
     if start_step > 0:
         print(f"Resumed from step {start_step}")
 
-    train_loader = load_dataloader(cfg, "train")
+    train_loader = load_dataloader(cfg, "train", start_step=sampler_step)
     val_loader = load_dataloader(cfg, "val")
     oov_loader = load_oov_loader(cfg, "val")
     sc_loader = load_speech_cmds(cfg, "val")
@@ -181,6 +183,3 @@ def launch():
 
 if __name__ == "__main__":
     launch()
-
-# Speed: 281 seconds for 10k steps with default settings: LETS UP BATCH
-# 10000/10000  val_loss=0.1625  val_acc=0.9470  oov_acc=0.9637  kw_acc=0.9670  silence_acc=0.7440  background_acc=0.9755

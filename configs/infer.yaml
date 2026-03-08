@@ -1,4 +1,4 @@
-model: "runs/20260227T211657Z_04d881799e/checkpoints/best.json"
+model: "runs/20260308T013035Z_5d578b15b7/checkpoints/best.json"
 label_file: "labels.json"
 device: "cpu"
 wakeword: "marvin"

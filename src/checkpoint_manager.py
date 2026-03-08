@@ -116,7 +116,7 @@ class CheckpointManager:
     def load(self, model: nn.Module, **train_state):
         result = self.load_latest()
         if result is None:
-            return 0, 0.0, 0
+            return 0, 0.0, 0, {}
         step_dir, step = result
         state_dict = load_file(step_dir / "model.safetensors")
         model.load_state_dict(state_dict)
@@ -125,7 +125,10 @@ class CheckpointManager:
         for name, obj in train_state.items():
             if name in saved_state:
                 obj.load_state_dict(saved_state[name])
-        return step, saved_state["best_acc"], state_dict
+
+        sampler_step = saved_state.get("sampler_step", step)
+        best_acc = saved_state.get("best_acc", 0.0)
+        return step, best_acc, sampler_step, state_dict
 
 
 if __name__ == "__main__":

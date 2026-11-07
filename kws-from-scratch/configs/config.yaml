@@ -1,0 +1,54 @@
+# 这份 YAML 是“数据”，直接给你。你的任务是在 kws/config.py 里写出能校验它的 schema。
+# 先通读一遍：每个字段你都要能说出“谁会读它、改了会发生什么”。
+
+data:
+  root: data/SpeechCommands/speech_commands_v0.02
+  keywords: [marvin, stop, zero, one, two, three, four, five, six, seven, eight, nine]
+
+preprocess:
+  sample_rate: 16000
+  clip_seconds: 1.0
+  n_fft: 400      # 思考题：16 kHz 下是多少毫秒？
+  hop_length: 160 # 思考题：一秒音频会切出多少帧？
+  n_mels: 64
+
+sampler:
+  keyword: 0.7
+  unknown: 0.2
+  silence: 0.05
+  background: 0.05
+
+augment:
+  enabled: true
+  noise_prob: 0.75
+  min_snr_db: -5.0
+  max_snr_db: 25.0
+  gain_prob: 0.75
+  min_gain_db: -15.0
+  max_gain_db: 5.0
+  freq_mask: 0  # 0 = 关闭
+  time_mask: 0
+
+model:
+  name: tc_resnet8
+  dropout: 0.5
+  width_mult: 1.0
+
+train:
+  lr: 0.001
+  weight_decay: 0.01
+  batch_size: 64
+  max_steps: 10000
+  warmup_steps: 1000
+  clip_norm: 10.0
+  amp: false
+  ema_decay: 0.999
+  num_workers: 4
+  device: auto   # auto | cpu | cuda | mps
+  log_every: 100
+  eval_every: 1000
+
+env:
+  seed: 42
+  run_root: runs
+  resume: null

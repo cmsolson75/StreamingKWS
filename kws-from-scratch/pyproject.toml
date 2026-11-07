@@ -1,0 +1,41 @@
+[project]
+name = "kws-from-scratch"
+version = "0.1.0"
+description = "闭卷从零实现的流式关键词识别系统（学习项目）"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib>=3.10",
+    "numpy>=2.0",
+    "pydantic>=2.10",
+    "pyyaml>=6.0",
+    "safetensors>=0.5",
+    "sounddevice>=0.5",
+    "soundfile>=0.13",
+    "torch>=2.8",
+    "torchaudio>=2.8",
+]
+
+[project.optional-dependencies]
+export = ["onnx>=1.17", "onnxruntime>=1.20", "onnxscript>=0.3"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15",
+    "pytest>=8.3",
+    "ruff>=0.9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+
+[tool.setuptools]
+packages = ["kws", "kws.streaming"]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>把命令行分成两部分</title><link rel="stylesheet" href="../assets/lesson.css">
+<body><p>KWS · M7 · 五分钟练习</p><h1>把命令行分成两部分</h1>
+<p>目标：自己完成训练入口的 <code>parse_args</code>，让调用者拿到配置路径和覆盖参数。</p>
+<pre>["--config", "c.yaml", "train.lr=0.01"]
+                  ↓
+("c.yaml", ["train.lr=0.01"])</pre>
+<p>先只注册 <code>--config</code>。剩下的字符串原样交给后续配置逻辑处理。</p>
+<h2>先认识工具</h2><pre>import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--config", required=True)
+args, remaining = parser.parse_known_args(
+    ["--config", "c.yaml", "train.lr=0.01"]
+)</pre>
+<p><code>args</code> 是按属性访问结果的 Namespace；<code>remaining</code> 是解析器没有处理的字符串列表。普通 <code>parser.parse_args</code> 默认会因这些未注册的额外参数报错。</p>
+<h2>预测，再展开核对</h2>
+<p>上面代码执行后，args.config 和 remaining 分别是什么？</p>
+<details><summary>核对</summary><pre>args.config == "c.yaml"
+remaining == ["train.lr=0.01"]</pre><p>配置路径被取出，覆盖参数仍是字符串。</p></details>
+<p>如果传入的列表只有 train.lr=0.01，会得到什么？</p>
+<details><summary>核对</summary><p>缺少 required=True 指定的 --config，默认报错并触发 SystemExit。这也对应项目的第二个测试断言。</p></details>
+<h2>自己补全返回值</h2><pre>def parse_args(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", required=True)
+    args, overrides = parser.parse_known_args(argv)
+    return ______, ______</pre>
+<p>保留项目原来的类型注解。文件顶部需要 import argparse。argv 为 None 时，解析器会读取实际命令行参数；传入列表则适合测试。</p>
+<p>完成后换成 env.seed=3 自己预测结果，并回到聊天贴出实现；有任何不清楚的地方，直接问老师。</p>
+<footer><a href="../reference/argparse.html">速查表</a> · 推荐阅读：<a href="https://docs.python.org/3/library/argparse.html#partial-parsing">Python 官方 partial parsing 文档</a></footer></body></html>

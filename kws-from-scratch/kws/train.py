@@ -37,12 +37,29 @@ from torch import nn
 
 from kws.config import Config
 
+import argparse
+
 
 def parse_args(argv: Sequence[str] | None = None) -> tuple[str, list[str]]:
     """解析命令行：必须有 --config <path>，其余形如 a.b=c 的参数作为覆盖列表返回。
 
     例：["--config", "c.yaml", "train.lr=0.01"] → ("c.yaml", ["train.lr=0.01"])
     """
+    ## 第一步：创建一个解析命令行的工具
+    parser = argparse.ArgumentParser()
+
+    ## 第二步：告诉这个工具规则
+    ## 意思是：1.识别 --config，并取它后面的一个值
+    parser.add_argument("--config", required=True) ## 这里是保证接收到的参数必须有config这个参数，required=True表示必须有这个参数
+
+    ## 第三步：提取认识的参数，留下其余参数
+    ## args 是一个通过属性取值的对象；overrides 是剩余的字符串列表
+    arv, overrides = parser.parse_known_args(
+        ["--config", "c.yamal", "train.lr=0.01"]
+    )
+
+
+
     raise NotImplementedError("M7: parse_args")
 
 
